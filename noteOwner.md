@@ -1,4 +1,10 @@
 # Artoria Bot
+Version:
+- setting.js
+- package.json
+- package-lock.json
+- README.md
+
 Files containing "Artoria Bot":
 - settings.js
 - session/creds.json

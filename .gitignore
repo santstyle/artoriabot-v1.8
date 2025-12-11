@@ -1,3 +1,4 @@
+﻿cat > .gitignore << 'EOF'
 # Dependencies
 node_modules/
 npm-debug.log*
@@ -8,6 +9,10 @@ yarn.lock
 
 # Binaries and executables
 bin/
+ffmpeg/
+ffmpeg-*/
+ffprobe
+ffplay
 *.exe
 *.dll
 *.so
@@ -19,6 +24,15 @@ bin/
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Session and temporary data
+session/
+sessions/
+*.session
+*.session.*
+temp/
+tmp/
+baileys_store.json
 
 # Logs
 logs/
@@ -72,3 +86,4 @@ Thumbs.db
 # Your specific large files
 gh.exe
 libvips-42.dll
+EOF
