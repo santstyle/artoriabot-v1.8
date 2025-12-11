@@ -1,4 +1,4 @@
-# ArtoriaBot v1.6
+# ArtoriaBot v1.8
 
 ArtoriaBot adalah bot WhatsApp yang dibangun menggunakan Node.js dan Baileys. Bot ini menyediakan berbagai fitur seperti pengelolaan grup, downloader media, dan banyak lagi.
 
@@ -24,7 +24,7 @@ Clone repository ini menggunakan Git:
 
 ```bash
 git clone https://github.com/santstyle/artoriabot-v1.6.git
-cd artoriabot-v1.6
+cd artoriabot-v1.8
 ```
 
 Atau unduh ZIP dari GitHub dan ekstrak ke folder lokal.
