@@ -1,0 +1,18 @@
+{
+  "emotions": {
+    "happiness": 0.5,
+    "sadness": 0.2,
+    "anger": 0.1,
+    "excitement": 0.3,
+    "affection": 0.4,
+    "sarcasm": 0.6,
+    "playfulness": 0.5,
+    "seriousness": 0.3,
+    "curiosity": 0.4,
+    "boredom": 0.1
+  },
+  "mood": "neutral",
+  "intensity": 0.5,
+  "history": [],
+  "lastUpdated": "2025-12-11T18:01:48.766Z"
+}

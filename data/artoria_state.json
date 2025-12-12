@@ -1,0 +1,39 @@
+{
+  "botStats": {
+    "totalMessages": 0,
+    "uniqueUsers": 0,
+    "groupsActive": 0,
+    "startTime": 1765475808763,
+    "errors": 0,
+    "apiCalls": 0,
+    "successfulResponses": 0,
+    "failedResponses": 0
+  },
+  "config": {
+    "name": "Artoria",
+    "personality": "Tsundere Imut Sarkastik",
+    "version": "3.0.0",
+    "features": [
+      "Advanced Emotion Engine",
+      "Learning AI System",
+      "Natural Indonesian Slang",
+      "Relationship Tracking",
+      "Memory System",
+      "Personality Matrix"
+    ],
+    "settings": {
+      "autoLearn": true,
+      "moodSwings": true,
+      "sarcasmEnabled": true,
+      "affectionateMode": true,
+      "playfulMode": true,
+      "maxResponseTime": 10000,
+      "minThinkingTime": 500,
+      "maxThinkingTime": 3000,
+      "apiMode": "hybrid"
+    }
+  },
+  "lastSaved": "2025-12-11T18:01:48.768Z",
+  "userSessions": [],
+  "groupsActive": []
+}

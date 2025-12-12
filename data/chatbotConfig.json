@@ -6,8 +6,12 @@
     "shynessLevel": 0.6,
     "playfulnessLevel": 0.5,
     "sarcasmLevel": 0.4,
-    "wisdomLevel": 0.3,
-    "protectivenessLevel": 0.8
+    "protectivenessLevel": 0.8,
+    "clinginessLevel": 0.6,
+    "sarkasmeLevel": 0.9,
+    "witLevel": 0.9,
+    "loyaltyLevel": 0.8,
+    "wisdomLevel": 0.3
   },
-  "lastUpdated": "2025-12-08T17:50:11.419Z"
+  "lastUpdated": "2025-12-12T13:00:42.490Z"
 }

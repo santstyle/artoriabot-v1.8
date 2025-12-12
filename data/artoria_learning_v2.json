@@ -1,0 +1,21 @@
+{
+  "knowledgeBase": {
+    "users": {},
+    "topics": {},
+    "patterns": {},
+    "preferences": {},
+    "memories": {},
+    "jokes": {},
+    "facts": {}
+  },
+  "stats": {
+    "totalInteractions": 0,
+    "learnedItems": 0,
+    "patternMatches": 0,
+    "successfulPredictions": 0,
+    "failedPredictions": 0,
+    "memoryUsage": 0,
+    "learningRate": 0.1
+  },
+  "lastUpdated": "2025-12-11T18:01:48.767Z"
+}
