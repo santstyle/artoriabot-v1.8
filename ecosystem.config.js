@@ -1,7 +1,7 @@
 module.exports = {
   apps: [{
     name: "artoria-bot",
-    version: "1.8",
+    "version": "1.8.0",
     script: "./index.js",
     cwd: "/home/ubuntu/santstyle/artoriabot-v1.6",
 

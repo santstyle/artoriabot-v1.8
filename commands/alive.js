@@ -1,14 +1,8 @@
 const settings = require("../settings");
-const langHelper = require("../lib/lang");
 
 async function aliveCommand(sock, chatId, message) {
     try {
-        const lang = langHelper.getLang(chatId);
-        // Cek apakah pesan alive ada di language pack
-        const aliveMessage = lang.general?.alive?.message || `Aku masih hidup dan sehat! Versi ${settings.version}~`;
-
-        // Tambahkan pesan yang lebih imut jika tidak ada di language pack
-        const message1 = aliveMessage.replace('{version}', settings.version);
+        const message1 = `Aku masih hidup dan sehat! Versi ${settings.version}~`;
 
         await sock.sendMessage(chatId, {
             text: message1

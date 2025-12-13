@@ -1,6 +1,6 @@
 const settings = {
   packname: 'Artoria Pendragon | Bot',
-  wm: '',
+  wm: 'Artoria Pendragon | Bot',
   author: '‎',
   botName: "Artoria Pendragon | Bot",
   botOwner: 'SantStyle', // Your name
@@ -10,7 +10,7 @@ const settings = {
   maxStoreMessages: 20,
   storeWriteInterval: 10000,
   description: "-",
-  version: "1.8",
+  version: "1.8.0",
 };
 
 module.exports = settings;

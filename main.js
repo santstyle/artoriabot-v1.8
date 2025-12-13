@@ -63,7 +63,6 @@ const takeCommand = require('./commands/take');
 const groupInfoCommand = require('./commands/groupinfo');
 const resetlinkCommand = require('./commands/resetlink');
 const staffCommand = require('./commands/staff');
-const setLangCommand = require('./commands/setlang');
 const broadcastCommand = require('./commands/broadcast');
 const instagramCommand = require('./commands/instagram');
 const facebookCommand = require('./commands/facebook');
@@ -346,14 +345,6 @@ async function handleMessages(sock, messageUpdate, printLog) {
                     console.error('Error memperbarui mode akses:', error);
                     await sock.sendMessage(chatId, { text: 'Gagal memperbarui mode akses bot' });
                 }
-                break;
-            case userMessage.startsWith('.setlang'):
-                const lang = userMessage.split(' ')[1];
-                if (!lang || (lang !== 'en' && lang !== 'id')) {
-                    await sock.sendMessage(chatId, { text: 'Bahasa tidak valid. Gunakan .setlang en atau .setlang id' });
-                    break;
-                }
-                await setLangCommand(sock, chatId, message, [lang]);
                 break;
             case userMessage.startsWith('.bc'):
             case userMessage.startsWith('.broadcast'):

@@ -144,6 +144,18 @@
         "bot": "Ihh, babaiii? Kamu mau bilang aku babai? 😂 Tapi aku tahu kamu cuma sedih, sayang... Aku mau peluk kamu, ga? Huaa? 🤗!",
         "mood": "normal",
         "timestamp": 1765596626543
+      },
+      {
+        "user": "hai",
+        "bot": "Dihh kamu masih lagi! Ada apa sih? Suka nggak sih bicara denganku?...",
+        "mood": "normal",
+        "timestamp": 1765609633011
+      },
+      {
+        "user": "hallo  cantikk",
+        "bot": "Ihh, cantikk? Kamu bilang aku cantikk? Hehe, aku senang banget, sayang! Mau dibilangin aku apa lagi? Aku siap dipuji!...",
+        "mood": "normal",
+        "timestamp": 1765615778386
       }
     ],
     "learnedWords": [
@@ -207,11 +219,13 @@
       "ngambek",
       "ama",
       "yaudah",
-      "babaii"
+      "babaii",
+      "hai",
+      "cantikk"
     ],
     "userStyle": {},
     "preferences": {},
-    "lastUpdated": 1765596626543,
-    "intimacyLevel": 12
+    "lastUpdated": 1765615778386,
+    "intimacyLevel": 13
   }
 }
