@@ -4,7 +4,7 @@ const fs = require('fs')
 const chalk = require('chalk')
 
 // === FIXED FFMPEG CONFIGURATION ===
-console.log('Starting Artoria Bot V1...')
+console.log('Artoria Pendragon | Bot')
 
 // Gunakan FFmpeg dari sistem Ubuntu
 process.env.FFMPEG_PATH = 'ffmpeg'

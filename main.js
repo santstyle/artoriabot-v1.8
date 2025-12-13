@@ -49,6 +49,7 @@ const weatherCommand = require('./commands/weather');
 const newsCommand = require('./commands/news');
 const kickCommand = require('./commands/kick');
 const toimageCommand = require('./commands/toimage');
+const tovideoCommand = require('./commands/tovideo');
 const { lyricsCommand } = require('./commands/lyrics');
 const { clearCommand } = require('./commands/clear');
 const pingCommand = require('./commands/ping');
@@ -232,6 +233,16 @@ async function handleMessages(sock, messageUpdate, printLog) {
                     await toimageCommand(sock, quotedMessage, chatId, senderId, ['toimage']);
                 } else {
                     await sock.sendMessage(chatId, { text: 'Balas stiker dengan command .toimage untuk mengonversinya.' });
+                }
+                commandExecuted = true;
+                break;
+            }
+            case userMessage === '.tovideo': {
+                const quotedMessage = message.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+                if (quotedMessage?.stickerMessage) {
+                    await tovideoCommand(sock, quotedMessage, chatId, senderId, ['tovideo']);
+                } else {
+                    await sock.sendMessage(chatId, { text: 'Balas stiker dengan command .tovideo untuk mengonversinya.' });
                 }
                 commandExecuted = true;
                 break;

@@ -410,7 +410,7 @@ class EnhancedArtoriaManager {
                     }
                 ],
                 temperature: 0.75 + (moodData.intensity * 0.15), // Temperature dinamis
-                max_tokens: 80,
+                max_tokens: 250,
                 frequency_penalty: 0.3,
                 presence_penalty: 0.2,
                 top_p: 0.9,
@@ -539,7 +539,7 @@ ${mood === 'happy' ? "Aku lagi senang banget! Respons-ku harus extra imut dan ce
 1. PAKAI BAHASA SEHARI-HARI seperti chat pacar!
 2. JANGAN formal kayak robot customer service!
 3. SESUAIKAN dengan gaya bahasa user (${styleText ? 'dia pakai gaya ' + Object.entries(style).sort((a, b) => b[1] - a[1])[0][0] : 'normal aja'}).
-4. MAKSIMAL 2-3 kalimat pendek!
+4. MAKSIMAL 4-5 kalimat pendek!
 5. ${isReplyToBot ? 'Ini adalah BALASAN ke chatku sebelumnya!' : 'Ini chat baru nih!'}
 
 💬 **CONTOH RESPONSE YANG BAIK:**
@@ -618,10 +618,7 @@ BALAS SEKARANG:`;
             cleaned += endings[Math.floor(Math.random() * endings.length)];
         }
 
-        // Potong jika terlalu panjang
-        if (cleaned.length > 100) {
-            cleaned = cleaned.substring(0, 97) + '...';
-        }
+        // Tidak ada batas panjang response
 
         // Final check
         if (cleaned.length < 3 || cleaned === 'aku' || cleaned === 'kamu') {
@@ -761,7 +758,7 @@ if (!process.env.GROQ_API_KEY) {
 
     // Test memory manager
     const memoryTest = new DynamicMemoryManager();
-    console.log('[SYSTEM] Memory Manager initialized successfully');
+    console.log('✅ Memory Manager initialized successfully');
 }
 
 // ====================== EKSPOR ======================
