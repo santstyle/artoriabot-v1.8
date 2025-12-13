@@ -78,7 +78,7 @@ setInterval(() => {
 
 let owner = JSON.parse(fs.readFileSync('./data/owner.json'))
 
-global.botname = "Artoria Bot V1"
+global.botname = "Artoria Pendragon | Bot"
 global.themeemoji = "•"
 
 // Clear old session data

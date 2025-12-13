@@ -6,7 +6,7 @@ const { exec } = require('child_process');
 
 // Pastikan path FFmpeg diatur (cadangan untuk main.js)
 if (!process.env.FFMPEG_PATH) {
-    const path = require('path'); // <-- PINDAHKAN KE DALAM IF
+    const path = require('path');
     const ffmpegPath = path.join(__dirname, 'ffmpeg', 'bin', 'ffmpeg.exe');
     process.env.FFMPEG_PATH = ffmpegPath;
     console.log('Path FFmpeg diatur di main.js:', ffmpegPath);
@@ -18,7 +18,7 @@ const yts = require('yt-search');
 const fs = require('fs');
 const fetch = require('node-fetch');
 const ytdl = require('ytdl-core');
-const path = require('path'); // <-- INI SATU-SATUNYA DEKLARASI PATH DI MAIN.JS
+const path = require('path'); // 
 const axios = require('axios');
 const ffmpeg = require('fluent-ffmpeg');
 const { addWelcome, delWelcome, isWelcomeOn, addGoodbye, delGoodBye, isGoodByeOn, isSudo } = require('./lib/index');

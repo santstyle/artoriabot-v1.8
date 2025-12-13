@@ -749,29 +749,15 @@ async function handleChatbotResponse(sock, chatId, message, userMessage, senderI
 }
 
 // ====================== SETUP & INISIALISASI ======================
-console.log('\n' + '='.repeat(70));
-console.log('🤖 ARTORIA ENHANCED v2.0 - CHARACTER.AI STYLE');
-console.log('='.repeat(70));
-console.log('✨ Fitur Utama:');
-console.log('  • Personality: LUCU, IMUT BANGET, GEMESIN, TSUNDERE, PROTECTIVE');
-console.log('  • Dynamic Mood System: Normal, Happy, Sad, Angry, Lovey');
-console.log('  • Memory Learning: Ingat obrolan, gaya bahasa, & preferensi user');
-console.log('  • Adaptive Responses: Menyesuaikan intimacy level & mood');
-console.log('  • Context-Aware: Menggunakan 50 pesan terakhir sebagai memori');
-console.log('='.repeat(70));
-
 if (!process.env.GROQ_API_KEY) {
     console.log('\n❌ ERROR: GROQ_API_KEY tidak ditemukan di environment!');
     console.log('   Tambahkan di file .env:');
     console.log('   GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxxxxxx');
     console.log('\n   Dapatkan API Key Gratis di: https://console.groq.com/keys');
-    console.log('='.repeat(70) + '\n');
     process.exit(1);
 } else {
     console.log('✅ API Key ditemukan');
-    console.log('🎭 Artoria siap menjadi pacar virtualmu yang imut!');
-    console.log('💾 Memory system aktif: data disimpan di data/conversation_history.json');
-    console.log('='.repeat(70) + '\n');
+    console.log('✅ Memory system aktif: data disimpan di data/conversation_history.json');
 
     // Test memory manager
     const memoryTest = new DynamicMemoryManager();
