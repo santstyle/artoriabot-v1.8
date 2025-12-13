@@ -77,11 +77,16 @@ atau
 ```bash
 vim .env
 ```
+Create API keys like this
+```env
+DEEPSEEK_API_KEY=
+GROQ_API_KEY=
+OPENAI_API_KEY=
+```
 
-Isi konfigurasi yang diperlukan seperti:
+Isi konfigurasi lainnya yang diperlukan seperti:
 
-- Nomor WhatsApp
-- API keys
+- Nomor WhatsApp <-- in setting.js
 - Pengaturan database
 - dll
 
