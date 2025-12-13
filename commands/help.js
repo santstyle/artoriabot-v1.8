@@ -55,6 +55,7 @@ Here are the available command menus in Artoria Bot:
 • .sticker <image>
 • .crop <image>
 • .toimage <sticker>
+• .tovideo <sticker>
 • .tgsticker <link>
 • .take <setwm>
 
