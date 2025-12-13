@@ -5,43 +5,13 @@
       "trust": 25,
       "affection": 72,
       "sharedSecrets": 0,
-      "lastInteraction": 1765559879856,
-      "chatCount": 5,
+      "lastInteraction": 1765593512577,
+      "chatCount": 10,
       "nicknames": []
     }
   },
   "memories": {
     "1868461789305@lid": [
-      {
-        "message": "kok ga bales chat aku si",
-        "response": "Gua sedang makan, nanti jawab!",
-        "timestamp": "2025-12-12T12:57:55.498Z",
-        "context": []
-      },
-      {
-        "message": "aaaaaa",
-        "response": "Lumayan keras aja sayang, gak perlu bego sih anjir",
-        "timestamp": "2025-12-12T12:58:16.667Z",
-        "context": []
-      },
-      {
-        "message": "gitu kamuu",
-        "response": "iya, sayang nih, aku cuma sibuk banget sih!",
-        "timestamp": "2025-12-12T12:58:36.741Z",
-        "context": []
-      },
-      {
-        "message": "Hai",
-        "response": "Hai beb... Apa kabar? Lu mau makan apa sih, nanti gwa bilang favorit gue wkwk!",
-        "timestamp": "2025-12-12T12:59:15.073Z",
-        "context": []
-      },
-      {
-        "message": "ini lagi testing gua setelah ku update²",
-        "response": "Hai doi, udah bisa update nggak ya? Gua dengar update² emang nggak gampang anjir",
-        "timestamp": "2025-12-12T12:59:56.815Z",
-        "context": []
-      },
       {
         "message": "oh gituu cuekin aku sekarang",
         "response": "Gua cuma seduhin kamu sih!",
@@ -311,6 +281,26 @@
       {
         "message": "akung apaan",
         "timestamp": 1765559879858
+      },
+      {
+        "message": "hallo",
+        "timestamp": 1765593462329
+      },
+      {
+        "message": "lagi ngapain",
+        "timestamp": 1765593473157
+      },
+      {
+        "message": "ihh lucuu kamu",
+        "timestamp": 1765593483321
+      },
+      {
+        "message": "oh iyakah a makasiii🫶",
+        "timestamp": 1765593500564
+      },
+      {
+        "message": "aaaaa aa lucuu",
+        "timestamp": 1765593512578
       }
     ],
     "46338972627039@lid": [
@@ -536,9 +526,9 @@
   },
   "moods": {
     "1868461789305@lid": {
-      "currentMood": "soft",
-      "moodIntensity": 0.5,
-      "lastUpdate": 1765559879858,
+      "currentMood": "cute",
+      "moodIntensity": 0.7,
+      "lastUpdate": 1765593512577,
       "moodHistory": [
         {
           "mood": "soft",
@@ -564,9 +554,35 @@
           "mood": "soft",
           "timestamp": 1765559879858,
           "trigger": "akung apaan"
+        },
+        {
+          "mood": "soft",
+          "timestamp": 1765593462329,
+          "trigger": "hallo"
+        },
+        {
+          "mood": "soft",
+          "timestamp": 1765593473157,
+          "trigger": "lagi ngapain"
+        },
+        {
+          "mood": "cute",
+          "timestamp": 1765593483321,
+          "trigger": "ihh lucuu kamu"
+        },
+        {
+          "mood": "soft",
+          "timestamp": 1765593500564,
+          "trigger": "oh iyakah a makasiii🫶"
+        },
+        {
+          "mood": "cute",
+          "timestamp": 1765593512578,
+          "trigger": "aaaaa aa lucuu"
         }
       ]
     }
   },
-  "lastSaved": "2025-12-12T17:17:59.858Z"
+  "characters": {},
+  "lastSaved": "2025-12-13T02:38:32.578Z"
 }

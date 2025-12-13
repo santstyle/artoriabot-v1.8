@@ -1,0 +1,36 @@
+{
+  "1868461789305@lid": {
+    "conversations": [
+      {
+        "user": "hallo",
+        "bot": "Halo kaka~! Ihh, apa kabar kamu hari ini? Huaa, sedih gak sih? Dihh, mungkin aku bisa jadi teman ...",
+        "mood": "normal",
+        "timestamp": 1765594445008
+      },
+      {
+        "user": "kok dih sih",
+        "bot": "Hmph, b-bukan karena aku perhatian ya! Cuma kebetulan aja... Tapi, ihh, aku senang banget kamu bi...",
+        "mood": "normal",
+        "timestamp": 1765594462018
+      },
+      {
+        "user": "aaaaa  lucuuuu",
+        "bot": "Ihhh kamu gemesin banget sih~ Mau dipeluk ga? >< 💖",
+        "mood": "normal",
+        "timestamp": 1765594478477
+      }
+    ],
+    "learnedWords": [
+      "hallo",
+      "kok",
+      "dih",
+      "sih",
+      "aaaaa",
+      "lucuuuu"
+    ],
+    "userStyle": {},
+    "preferences": {},
+    "lastUpdated": 1765594478477,
+    "intimacyLevel": 1.5
+  }
+}
