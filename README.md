@@ -25,7 +25,7 @@ Clone repository ini menggunakan Git:
 
 ```bash
 git clone https://github.com/santstyle/artoriabot-v1.8.git
-cd artoriabot-v2
+cd artoriabot-v1.8
 ```
 
 ### Langkah 2: Install Node Modules
