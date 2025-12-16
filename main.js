@@ -139,11 +139,7 @@ async function handleMessages(sock, messageUpdate, printLog) {
             return;
         }
 
-        // Pertama cek apakah ini langkah permainan
-        if (/^[1-9]$/.test(userMessage) || userMessage.toLowerCase() === 'surrender') {
-            await handleTicTacToeMove(sock, chatId, senderId, userMessage);
-            return;
-        }
+        // Fitur tic-tac-toe dihapus karena belum diimplementasikan
 
         if (!message.key.fromMe) incrementMessageCount(chatId, senderId);
 

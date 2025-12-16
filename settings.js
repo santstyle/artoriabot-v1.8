@@ -1,6 +1,6 @@
 const settings = {
   packname: 'Artoria Pendragon | Bot',
-  wm: 'Artoria Pendragon | Bot',
+  wm: '',
   author: '‎',
   botName: "Artoria Pendragon | Bot",
   botOwner: 'SantStyle', // Your name
