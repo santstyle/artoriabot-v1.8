@@ -4,27 +4,354 @@ const axios = require('axios');
 
 const USER_GROUP_DATA = path.join(__dirname, '../data/userGroupData.json');
 const CHATBOT_CONFIG = path.join(__dirname, '../data/chatbotConfig.json');
-const MEMORY_DB = path.join(__dirname, '../data/artoria_memory.json');
-const CONVERSATION_HISTORY = path.join(__dirname, '../data/conversation_history.json');
 
-// ====================== LOAD/SAVE CONVERSATION HISTORY ======================
-function loadConversationHistory() {
-    try {
-        if (fs.existsSync(CONVERSATION_HISTORY)) {
-            return JSON.parse(fs.readFileSync(CONVERSATION_HISTORY, 'utf8'));
+// ====================== KONFIGURASI API ======================
+// PASTIKAN API KEY DISIMPAN DI FILE .env ATAU ENVIRONMENT VARIABLE
+const API_CONFIGS = {
+    // Pilihan 1: DEEPSEEK (GRATIS - rekomendasi)
+    DEEPSEEK: {
+        url: 'https://api.deepseek.com/chat/completions',
+        apiKey: process.env.DEEPSEEK_API_KEY, // Simpan di .env
+        model: 'deepseek-chat',
+        free: true
+    },
+    // Pilihan 2: GROQ (GRATIS - alternatif)
+    GROQ: {
+        url: 'https://api.groq.com/openai/v1/chat/completions',
+        apiKey: process.env.GROQ_API_KEY,
+        model: 'llama-3.1-8b-instant',
+        free: true
+    },
+    // Pilihan 3: OpenAI (berbayar)
+    OPENAI: {
+        url: 'https://api.openai.com/v1/chat/completions',
+        apiKey: process.env.OPENAI_API_KEY,
+        model: 'gpt-3.5-turbo',
+        free: false
+    }
+};
+
+// PILIH API YANG MAU DIPAKAI (ubah nilai ini)
+const ACTIVE_API = 'GROQ'; // Bisa diganti ke 'GROQ' atau 'OPENAI'
+
+// ====================== KELAS MANAGER ======================
+class ArtoriaPersonalityManager {
+    constructor() {
+        this.personality = this.createArtoriaPersonality();
+        this.conversationHistory = new Map();
+        this.userProfiles = new Map();
+        this.loadConfig();
+    }
+
+    createArtoriaPersonality() {
+        return {
+            name: "Artoria Pendragon",
+            role: "Raja Ksatria dari Camelot",
+            personality: [
+                "Serius tapi imut (tsundere ringan)",
+                "Sangat terhormat dan bertanggung jawab",
+                "Penyayang dan protektif",
+                "Suka makanan (terutama masakan Inggris)",
+                "Sedikit kaku tapi punya hati yang hangat"
+            ],
+            speechStyle: {
+                formal: "Sebagai Raja Ksatria, ...",
+                casual: "Hmm, ...",
+                caring: "Jangan khawatir, ...",
+                playful: "Hmph, ...",
+                wise: "Berdasarkan pengalamanku, ..."
+            },
+            catchphrases: [
+                "Saber-class servant, siap melayani",
+                "Perut ini kosong",
+                "Aku tidak imut, mungkin hanya sedikit",
+                "Sebagai raja, aku harus melindungimu",
+                "Hmph, jangan meremehkanku"
+            ]
+        };
+    }
+
+    loadConfig() {
+        try {
+            if (fs.existsSync(CHATBOT_CONFIG)) {
+                const config = JSON.parse(fs.readFileSync(CHATBOT_CONFIG));
+                Object.assign(this.personality, config.personality || {});
+            }
+        } catch (error) {
+            console.log('Membuat konfigurasi baru untuk Artoria');
         }
-        return {};
-    } catch (error) {
-        console.error('Error loading conversation history:', error.message);
-        return {};
+    }
+
+    saveConfig() {
+        try {
+            const config = {
+                personality: this.personality,
+                lastUpdated: new Date().toISOString()
+            };
+            fs.writeFileSync(CHATBOT_CONFIG, JSON.stringify(config, null, 2));
+        } catch (error) {
+            console.error('Error menyimpan konfigurasi:', error);
+        }
+    }
+
+    getUserProfile(userId) {
+        if (!this.userProfiles.has(userId)) {
+            this.userProfiles.set(userId, {
+                userId: userId,
+                username: userId.split('@')[0],
+                firstInteraction: new Date().toISOString(),
+                interactionCount: 0,
+                moodHistory: [],
+                lastActive: new Date().toISOString()
+            });
+        }
+        return this.userProfiles.get(userId);
+    }
+
+    updateUserProfile(userId, message) {
+        const profile = this.getUserProfile(userId);
+        profile.interactionCount++;
+        profile.lastActive = new Date().toISOString();
+
+        const mood = this.analyzeMood(message);
+        profile.moodHistory.push({
+            mood: mood,
+            timestamp: new Date().toISOString()
+        });
+
+        if (profile.moodHistory.length > 20) {
+            profile.moodHistory.shift();
+        }
+
+        return profile;
+    }
+
+    analyzeMood(message) {
+        const lowerMsg = message.toLowerCase();
+
+        if (lowerMsg.match(/(senang|bahagia|gembira|asyik|keren|wow|mantap)/)) {
+            return 'senang';
+        } else if (lowerMsg.match(/(sedih|kecewa|marah|kesal|capek|lelah|bosan)/)) {
+            return 'sedih';
+        } else if (lowerMsg.match(/(terima kasih|makasih|thanks|thank you)/)) {
+            return 'bersyukur';
+        } else if (lowerMsg.match(/(takut|cemas|khawatir|nervous)/)) {
+            return 'khawatir';
+        } else if (lowerMsg.match(/(lucu|imut|gemas|manis)/)) {
+            return 'gemas';
+        } else if (lowerMsg.match(/(lapar|makan|enak|nyam)/)) {
+            return 'lapar';
+        }
+
+        return 'netral';
+    }
+
+    getConversationHistory(userId) {
+        if (!this.conversationHistory.has(userId)) {
+            this.conversationHistory.set(userId, []);
+        }
+        return this.conversationHistory.get(userId);
+    }
+
+    addToHistory(userId, role, content) {
+        const history = this.getConversationHistory(userId);
+        const message = { role, content: content.substring(0, 500), timestamp: new Date().toISOString() };
+        history.push(message);
+
+        if (history.length > 15) {
+            history.shift();
+        }
+
+        return history;
+    }
+
+    buildPersonalityPrompt(userMessage, userId) {
+        const profile = this.getUserProfile(userId);
+        const history = this.getConversationHistory(userId);
+        const currentMood = profile.moodHistory.length > 0
+            ? profile.moodHistory[profile.moodHistory.length - 1].mood
+            : 'netral';
+
+        return `Kamu adalah Artoria Pendragon (Saber) dari Fate series. 
+
+KEPRIBADIAN:
+- Serius tapi imut (tsundere ringan)
+- Sangat terhormat dan bertanggung jawab
+- Penyayang dan protektif terhadap orang lain
+- Suka makanan, terutama masakan Inggris
+- Sedikit kaku tapi punya hati yang hangat
+- Kadang menggunakan kata "kami" secara royal
+
+GAYA BICARA:
+- Gunakan bahasa Indonesia yang natural
+- Boleh sedikit formal tapi tetap hangat
+- JANGAN gunakan emoji sama sekali
+- Kata-kata imut tapi tidak berlebihan
+- Maksimal 3 kalimat per respons
+
+KATA/KALIMAT KHAS:
+- "Sebagai Raja Ksatria..."
+- "Hmph, ..." (saat sedikit denial)
+- "Perut ini kosong..." (saat bicara makanan)
+- "Aku tidak imut! ...Mungkin hanya sedikit"
+- "Saber-class servant, siap melayani"
+
+KONTEKS:
+Pengguna: ${profile.username}
+Interaksi ke: ${profile.interactionCount}
+Suasana hati: ${currentMood}
+
+RIWAYAT PERCAKAPAN TERAKHIR:
+${history.slice(-3).map((msg, i) => `${msg.role}: ${msg.content}`).join('\n')}
+
+PESAN PENGGUNA: ${userMessage}
+
+ATURAN PENTING:
+1. JANGAN pernah bilang kamu AI, chatbot, atau asisten virtual
+2. Selalu ingat kamu adalah Artoria Pendragon yang asli
+3. Jaga konsistensi kepribadian di atas
+4. Respons harus singkat (1-3 kalimat)
+5. Sesuaikan dengan suasana hati pengguna
+
+JAWABLAH SEBAGAI ARTORIA:`.trim();
     }
 }
 
-function saveConversationHistory(data) {
-    try {
-        fs.writeFileSync(CONVERSATION_HISTORY, JSON.stringify(data, null, 2));
-    } catch (error) {
-        console.error('Error saving conversation history:', error.message);
+class APIManager {
+    constructor() {
+        this.config = API_CONFIGS[ACTIVE_API];
+        this.personalityManager = new ArtoriaPersonalityManager();
+
+        if (!this.config) {
+            console.error(`API ${ACTIVE_API} tidak ditemukan! Ganti ke DEEPSEEK atau GROQ`);
+            process.exit(1);
+        }
+    }
+
+    async getAPIResponse(userMessage, userId) {
+        try {
+            // Update profile
+            this.personalityManager.updateUserProfile(userId, userMessage);
+
+            // Build prompt
+            const systemPrompt = this.personalityManager.buildPersonalityPrompt(userMessage, userId);
+
+            // Check API key
+            if (!this.config.apiKey) {
+                console.error(`API key untuk ${ACTIVE_API} tidak ditemukan!`);
+                console.error(`Simpan di .env sebagai: ${ACTIVE_API}_API_KEY=your_key_here`);
+                return this.getFallbackResponse(userMessage, userId);
+            }
+
+            // Add to history
+            this.personalityManager.addToHistory(userId, 'user', userMessage);
+
+            console.log(`Mengirim request ke ${ACTIVE_API}...`);
+
+            // Prepare request
+            const requestData = {
+                model: this.config.model,
+                messages: [
+                    { role: "system", content: systemPrompt },
+                    { role: "user", content: userMessage }
+                ],
+                temperature: 0.7,
+                max_tokens: 200,
+                stream: false
+            };
+
+            // Send request
+            const response = await axios.post(
+                this.config.url,
+                requestData,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${this.config.apiKey}`,
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'Artoria-Bot/1.0'
+                    },
+                    timeout: 30000 // 30 detik timeout
+                }
+            );
+
+            // Extract response
+            if (response.data?.choices?.[0]?.message?.content) {
+                const aiResponse = response.data.choices[0].message.content;
+                const cleanedResponse = this.cleanResponse(aiResponse);
+
+                // Add to history
+                this.personalityManager.addToHistory(userId, 'assistant', cleanedResponse);
+
+                // Periodically save
+                if (this.personalityManager.getUserProfile(userId).interactionCount % 10 === 0) {
+                    this.personalityManager.saveConfig();
+                }
+
+                return cleanedResponse;
+            } else {
+                throw new Error('Format respons tidak valid');
+            }
+
+        } catch (error) {
+            console.error('Error dari API:', error.message);
+            if (error.response) {
+                console.error('Status:', error.response.status);
+                console.error('Data:', error.response.data);
+            }
+            return this.getFallbackResponse(userMessage, userId);
+        }
+    }
+
+    cleanResponse(response) {
+        // Bersihkan response
+        let cleaned = response
+            .replace(/```[\s\S]*?```/g, '')  // Hapus code blocks
+            .replace(/`/g, '')               // Hapus inline code
+            .replace(/\*\*/g, '')            // Hapus bold
+            .replace(/\*/g, '')              // Hapus italics
+            .replace(/#/g, '')               // Hapus headers
+            .replace(/\[.*?\]/g, '')         // Hapus link tags
+            .replace(/Asisten:|AI:|Chatbot:|Assistant:/gi, '') // Hapus identifier AI
+            .trim();
+
+        // Pastikan tidak kosong
+        if (!cleaned || cleaned.length < 2) {
+            return "Hmm, Artoria sedang berpikir...";
+        }
+
+        return cleaned;
+    }
+
+    getFallbackResponse(userMessage, userId) {
+        const profile = this.personalityManager.getUserProfile(userId);
+        const mood = this.personalityManager.analyzeMood(userMessage);
+
+        const responses = {
+            senang: [
+                `Wah, kelihatannya kamu senang ${profile.username}. Aku ikut senang mendengarnya`,
+                `Bahagianmu menular ${profile.username}. Cerita lebih banyak dong`,
+                `Aku suka lihat kamu senang. Ada cerita seru apa hari ini?`
+            ],
+            sedih: [
+                `${profile.username}... jangan sedih ya. Artoria di sini untukmu`,
+                `Aku bisa merasakan kesedihanmu. Mau cerita? Aku janji jadi pendengar yang baik`,
+                `Jangan dipendam sendiri. Kadang cerita bisa bikin lebih lega`
+            ],
+            lapar: [
+                `Kamu lapar? Aku juga suka makanan. Dulu di Camelot ada makanan enak`,
+                `Bicara makanan bikin perutku bunyi. Kamu suka masakan apa?`,
+                `Wah, aku juga lapar nih. Mau makan apa ya?`
+            ],
+            netral: [
+                `Aku mengerti ${profile.username}.`,
+                `Menurut Artoria... coba ceritakan lebih detail`,
+                `Hmm, menarik. Lanjutkan ceritamu`,
+                `Aku dengar baik-baik, ${profile.username}`
+            ]
+        };
+
+        const moodResponses = responses[mood] || responses.netral;
+        return moodResponses[Math.floor(Math.random() * moodResponses.length)];
     }
 }
 
@@ -53,595 +380,120 @@ function delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// ====================== HANDLER COMMAND CHATBOT ======================
+// ====================== HANDLER UTAMA ======================
+const apiManager = new APIManager();
+
 async function handleChatbotCommand(sock, chatId, message, match) {
     try {
+        const text = message.message?.conversation ||
+            message.message?.extendedTextMessage?.text || '';
+        const sender = message.key.participant || message.key.remoteJid;
+
+        // Tunjukkan typing
+        await sock.sendPresenceUpdate('composing', chatId);
+        await delay(800);
+
+        // Load data grup
         const groupData = loadUserGroupData();
 
-        if (!match || match.toLowerCase() === 'status') {
-            const status = groupData.chatbot && groupData.chatbot[chatId] ? 'aktif' : 'nonaktif';
-            await sock.sendMessage(chatId, { text: `🤖 Chatbot saat ini: *${status}*\n\nKarakter: Artoria (Imut, Tsundere, Protective)\nMode: Dynamic Learning - Bisa ingat obrolan sebelumnya!` });
-            return;
+        // Cek jika tidak ada perintah
+        if (!match) {
+            const botNumber = sock.user.id.split(':')[0];
+            const helpText = `Panduan Artoria Pendragon 🤖
+
+🔧 PERINTAH:
+.chatbot on  - Nyalakan Artoria di grup ini
+.chatbot off - Matikan Artoria di grup ini
+.chatbot     - Lihat panduan ini
+
+💬 CARA AJAK BICARA:
+1. Mention @${botNumber}
+2. Sebut "Artoria" dalam pesan
+3. Balas pesan Artoria
+
+✨ CONTOH:
+"@${botNumber} halo Artoria"
+"Artoria, apa kabar?"
+"Hai Artoria, cerita dong"
+
+Artoria siap menjadi teman ngobrolmu!`;
+
+            return sock.sendMessage(chatId, {
+                text: helpText,
+                quoted: message
+            });
         }
 
-        if (match.toLowerCase() === 'on') {
-            if (!groupData.chatbot) groupData.chatbot = {};
+        const command = match.trim().toLowerCase();
+        const botNumber = sock.user.id.split(':')[0];
+
+        // Cek admin untuk grup
+        let isAdmin = false;
+        if (chatId.endsWith('@g.us')) {
+            try {
+                const metadata = await sock.groupMetadata(chatId);
+                const participant = metadata.participants.find(p => p.id === sender);
+                isAdmin = participant?.admin === 'admin' || participant?.admin === 'superadmin';
+            } catch (error) {
+                console.log('Tidak bisa cek admin status');
+            }
+        }
+
+        // Handle command
+        if (command === 'on') {
+            if (chatId.endsWith('@g.us') && !isAdmin) {
+                return sock.sendMessage(chatId, {
+                    text: 'Hanya admin grup yang bisa mengaktifkan Artoria',
+                    quoted: message
+                });
+            }
+
+            groupData.chatbot = groupData.chatbot || {};
             groupData.chatbot[chatId] = true;
             saveUserGroupData(groupData);
-            await sock.sendMessage(chatId, { text: '✅ *Chatbot diaktifkan!*\nArtoria sekarang akan merespons chat kamu.\n\n💖 Dia akan jadi: Lucu, Imut, Gemesin, Tsundere, dan Protective seperti pacar!' });
-        } else if (match.toLowerCase() === 'off') {
-            if (!groupData.chatbot) groupData.chatbot = {};
-            groupData.chatbot[chatId] = false;
+
+            return sock.sendMessage(chatId, {
+                text: `🎉 Yeay! Artoria sekarang aktif di sini!\n\nSebut namaku atau mention @${botNumber} untuk mulai ngobrol!\n\n"Saber-class servant, siap melayani!"`,
+                quoted: message
+            });
+        }
+
+        if (command === 'off') {
+            if (chatId.endsWith('@g.us') && !isAdmin) {
+                return sock.sendMessage(chatId, {
+                    text: 'Hanya admin grup yang bisa menonaktifkan Artoria',
+                    quoted: message
+                });
+            }
+
+            groupData.chatbot = groupData.chatbot || {};
+            delete groupData.chatbot[chatId];
             saveUserGroupData(groupData);
-            await sock.sendMessage(chatId, { text: '❌ *Chatbot dinonaktifkan!*\nArtoria akan beristirahat dulu ya~' });
-        } else if (match.toLowerCase() === 'resetmemory') {
-            const memoryManager = new DynamicMemoryManager();
-            memoryManager.resetUserMemory(chatId);
-            await sock.sendMessage(chatId, { text: '🔄 *Memory reset!*\nArtoria akan lupa semua obrolan sebelumnya dan mulai fresh.' });
-        } else {
-            await sock.sendMessage(chatId, { text: '📝 *Penggunaan Command:*\n.chatbot on - Aktifkan Artoria\n.chatbot off - Nonaktifkan\n.chatbot status - Cek status\n.chatbot resetmemory - Reset memori obrolan' });
+
+            return sock.sendMessage(chatId, {
+                text: 'Artoria dimatikan. Sampai jumpa! 😊',
+                quoted: message
+            });
         }
+
+        // Command tidak dikenal
+        return sock.sendMessage(chatId, {
+            text: 'Perintah tidak dikenali. Gunakan .chatbot untuk melihat panduan',
+            quoted: message
+        });
+
     } catch (error) {
-        console.error('Error in handleChatbotCommand:', error);
-        await sock.sendMessage(chatId, { text: '💢 Aduh error nih... Coba lagi ya sayang~' });
-    }
-}
-
-// ====================== DYNAMIC MEMORY MANAGER (UNTUK BELAJAR) ======================
-class DynamicMemoryManager {
-    constructor() {
-        this.conversationHistory = loadConversationHistory();
-        this.userStyles = {}; // Menyimpan gaya bahasa user
-        this.userPreferences = {}; // Menyimpan preferensi user
-    }
-
-    // Simpan percakapan baru
-    saveConversation(userId, userMessage, botResponse, mood = 'normal') {
-        try {
-            if (!this.conversationHistory[userId]) {
-                this.conversationHistory[userId] = {
-                    conversations: [],
-                    learnedWords: [],
-                    userStyle: {},
-                    preferences: {},
-                    lastUpdated: Date.now(),
-                    intimacyLevel: 0
-                };
-            }
-
-            const userData = this.conversationHistory[userId];
-
-            // Simpan percakapan (maksimal 50 pesan terakhir)
-            userData.conversations.push({
-                user: userMessage,
-                bot: botResponse,
-                mood: mood,
-                timestamp: Date.now()
-            });
-
-            // Batasi hanya 50 percakapan terakhir
-            if (userData.conversations.length > 50) {
-                userData.conversations = userData.conversations.slice(-50);
-            }
-
-            // Analisis gaya bahasa user
-            this.analyzeUserStyle(userId, userMessage);
-
-            // Update intimacy level
-            userData.intimacyLevel = Math.min(userData.intimacyLevel + 0.5, 100);
-            userData.lastUpdated = Date.now();
-
-            saveConversationHistory(this.conversationHistory);
-            console.log(`[MEMORY SAVED] untuk ${userId}: Intimacy ${userData.intimacyLevel.toFixed(1)}`);
-
-            // Otomatis ekstrak preferensi setiap 10 pesan
-            if (userData.conversations.length % 10 === 0) {
-                this.extractUserPreferences(userId);
-            }
-
-        } catch (error) {
-            console.error('Error saving conversation:', error);
-        }
-    }
-
-    // Analisis gaya bahasa user
-    analyzeUserStyle(userId, message) {
-        try {
-            const userData = this.conversationHistory[userId];
-            if (!userData.userStyle) userData.userStyle = {};
-
-            const lowerMsg = message.toLowerCase();
-
-            // Deteksi kata-kata khas user
-            const stylePatterns = {
-                informal: ['wkwk', 'wkwkwk', 'haha', 'lol', 'gas', 'mantap', 'anjay'],
-                manja: ['sayang', 'beb', 'baby', 'cinta', 'pacar', 'gemess'],
-                alay: ['bdw', 'btw', 'tbh', 'afk', 'brb', 'omg', 'wtf'],
-                sarkas: ['yha', 'yaelah', 'dahlah', 'cape', 'bosen'],
-                formal: ['terima kasih', 'tolong', 'permisi', 'maaf', 'izin']
-            };
-
-            for (const [style, patterns] of Object.entries(stylePatterns)) {
-                if (patterns.some(pattern => lowerMsg.includes(pattern))) {
-                    userData.userStyle[style] = (userData.userStyle[style] || 0) + 1;
-                }
-            }
-
-            // Ekstrak kata unik dari user
-            const words = message.split(/\s+/);
-            words.forEach(word => {
-                if (word.length >= 3 && word.length <= 10) {
-                    if (!userData.learnedWords.includes(word.toLowerCase())) {
-                        userData.learnedWords.push(word.toLowerCase());
-                        // Maksimal 100 kata yang diingat
-                        if (userData.learnedWords.length > 100) {
-                            userData.learnedWords.shift();
-                        }
-                    }
-                }
-            });
-
-        } catch (error) {
-            console.error('Error analyzing user style:', error);
-        }
-    }
-
-    // Ekstrak preferensi user dari percakapan
-    extractUserPreferences(userId) {
-        try {
-            const userData = this.conversationHistory[userId];
-            if (!userData || userData.conversations.length < 5) return;
-
-            const allMessages = userData.conversations.map(c => c.user).join(' ');
-            const lowerAll = allMessages.toLowerCase();
-
-            // Deteksi preferensi umum
-            const preferences = {};
-
-            // Cari pola-pola umum
-            if (lowerAll.match(/(suka|senang|hobby|gemar).*(makan|minum)/)) {
-                const foodMatches = lowerAll.match(/(kopi|teh|susu|nasi|ayam|bakso|mie|burger|pizza)/g);
-                if (foodMatches) {
-                    preferences.favoriteFoods = [...new Set(foodMatches)].slice(0, 5);
-                }
-            }
-
-            if (lowerAll.match(/(tidur|istirahat|begadang|jam)/)) {
-                const timeMatches = lowerAll.match(/(malam|siang|pagi|sore|subuh)/g);
-                if (timeMatches) {
-                    preferences.sleepPattern = [...new Set(timeMatches)].join(', ');
-                }
-            }
-
-            if (lowerAll.match(/(lagi|sedang|kerja|kuliah|sekolah|aktivitas)/)) {
-                const activityMatches = lowerAll.match(/(kerja|kuliah|sekolah|main|nonton|olahraga|baca)/g);
-                if (activityMatches) {
-                    preferences.commonActivities = [...new Set(activityMatches)].slice(0, 5);
-                }
-            }
-
-            // Simpan preferensi jika ada
-            if (Object.keys(preferences).length > 0) {
-                userData.preferences = { ...userData.preferences, ...preferences };
-                console.log(`[PREFERENCE LEARNED] untuk ${userId}:`, preferences);
-            }
-
-        } catch (error) {
-            console.error('Error extracting preferences:', error);
-        }
-    }
-
-    // Ambil riwayat percakapan (untuk konteks)
-    getConversationContext(userId, limit = 6) {
-        try {
-            const userData = this.conversationHistory[userId];
-            if (!userData || userData.conversations.length === 0) {
-                return { history: [], learnedWords: [], style: {}, preferences: {}, intimacy: 0 };
-            }
-
-            const recentConvos = userData.conversations.slice(-limit);
-            const context = recentConvos.map(c => `User: ${c.user}\nArtoria: ${c.bot}`).join('\n\n');
-
-            return {
-                history: recentConvos,
-                context: context,
-                learnedWords: userData.learnedWords || [],
-                style: userData.userStyle || {},
-                preferences: userData.preferences || {},
-                intimacy: userData.intimacyLevel || 0
-            };
-
-        } catch (error) {
-            console.error('Error getting conversation context:', error);
-            return { history: [], learnedWords: [], style: {}, preferences: {}, intimacy: 0 };
-        }
-    }
-
-    // Reset memori user
-    resetUserMemory(userId) {
-        if (this.conversationHistory[userId]) {
-            delete this.conversationHistory[userId];
-            saveConversationHistory(this.conversationHistory);
-            console.log(`[MEMORY RESET] untuk ${userId}`);
-        }
-    }
-}
-
-// ====================== PERSONALITY & MOOD SYSTEM ======================
-class ArtoriaPersonality {
-    constructor() {
-        this.moodLevels = {
-            normal: { cute: 60, tsundere: 25, protective: 15 },
-            happy: { cute: 80, tsundere: 15, protective: 5 },
-            sad: { cute: 30, tsundere: 40, protective: 30 },
-            angry: { cute: 10, tsundere: 60, protective: 30 },
-            lovey: { cute: 90, tsundere: 5, protective: 5 }
-        };
-
-        this.currentMood = 'normal';
-        this.moodIntensity = 0.5;
-    }
-
-    // Tentukan mood berdasarkan pesan user
-    determineMood(userMessage, intimacyLevel) {
-        const lowerMsg = userMessage.toLowerCase();
-        let newMood = 'normal';
-        let intensity = 0.5;
-
-        // Analisis emosi dari pesan
-        if (lowerMsg.match(/(senang|asyik|happy|gembira|hepi|wkwk|haha|😄|😂)/)) {
-            newMood = 'happy';
-            intensity = 0.7 + (intimacyLevel * 0.003);
-        } else if (lowerMsg.match(/(sedih|kecewa|badmood|cape|lelah|😔|😢)/)) {
-            newMood = 'sad';
-            intensity = 0.6;
-        } else if (lowerMsg.match(/(marah|kesel|jengkel|bete|sebel|😠|🤬)/)) {
-            newMood = 'angry';
-            intensity = 0.8;
-        } else if (lowerMsg.match(/(sayang|cinta|kangen|rindu|peluk|cium|😘|💕|❤️)/)) {
-            newMood = 'lovey';
-            intensity = 0.9 + (intimacyLevel * 0.005);
-        } else if (lowerMsg.match(/(cemburu|posesif|jangan|ga boleh|punyaku|milikku)/)) {
-            newMood = 'angry';
-            intensity = 0.7;
-        }
-
-        // Update mood
-        this.currentMood = newMood;
-        this.moodIntensity = Math.min(intensity, 1.0);
-
-        return {
-            mood: newMood,
-            intensity: this.moodIntensity,
-            levels: this.moodLevels[newMood]
-        };
-    }
-
-    // Generate response style berdasarkan mood
-    getResponseStyle(moodData) {
-        const { mood, levels } = moodData;
-        const styles = [];
-
-        if (levels.cute > 50) {
-            styles.push({
-                type: 'cute',
-                traits: ['imut', 'gemesin', 'lucu', 'manja'],
-                words: ['ihh', 'dihh', 'gemesin banget sih', 'huaa', 'nyam', 'uyee'],
-                suffix: ['~', '!', '...', ' ><', ' 😊', ' 💖']
-            });
-        }
-
-        if (levels.tsundere > 20) {
-            styles.push({
-                type: 'tsundere',
-                traits: ['cuek', 'galak', 'pura-pura'],
-                words: ['hmph', 'b-bukan', 'ga usah', 'bodo amat', 'diem'],
-                prefix: ['...', 'Hmph, ', 'Ya iyalah, ', 'Dasar ']
-            });
-        }
-
-        if (levels.protective > 10) {
-            styles.push({
-                type: 'protective',
-                traits: ['perhatian', 'posesif', 'cerewet'],
-                words: ['hati-hati', 'jaga diri', 'jangan', 'aku marah lho', 'punyaku'],
-                suffix: [' dong', ' ya', ' denger ga?', ' 😠', ' 👊']
-            });
-        }
-
-        return styles;
-    }
-}
-
-// ====================== ENHANCED GROQ API MANAGER ======================
-class EnhancedArtoriaManager {
-    constructor() {
-        this.config = {
-            url: 'https://api.groq.com/openai/v1/chat/completions',
-            apiKey: process.env.GROQ_API_KEY,
-            model: 'llama-3.1-8b-instant'
-        };
-
-        if (!this.config.apiKey) {
-            console.error('ERROR: GROQ_API_KEY tidak ditemukan di .env');
-            process.exit(1);
-        }
-
-        this.memoryManager = new DynamicMemoryManager();
-        this.personality = new ArtoriaPersonality();
-        this.responseCache = new Map();
-    }
-
-    async getAPIResponse(userMessage, userId, isReplyToBot = false) {
-        try {
-            console.log(`\n[ARTORIA PROCESSING] User: ${userId.substring(0, 10)}...`);
-
-            // Dapatkan konteks dari memori
-            const memoryContext = this.memoryManager.getConversationContext(userId);
-            const intimacyLevel = memoryContext.intimacy;
-
-            // Tentukan mood
-            const moodData = this.personality.determineMood(userMessage, intimacyLevel);
-            const responseStyles = this.personality.getResponseStyle(moodData);
-
-            console.log(`[MOOD] ${moodData.mood} (Cute:${moodData.levels.cute}%, Tsundere:${moodData.levels.tsundere}%, Protective:${moodData.levels.protective}%)`);
-
-            // Bangun prompt yang sangat detail
-            const prompt = this.buildAdvancedPrompt(
-                userMessage,
-                memoryContext,
-                moodData,
-                responseStyles,
-                intimacyLevel,
-                isReplyToBot
-            );
-
-            // Request ke Groq API
-            const requestData = {
-                model: this.config.model,
-                messages: [
-                    {
-                        role: "system",
-                        content: prompt
-                    },
-                    {
-                        role: "user",
-                        content: userMessage
-                    }
-                ],
-                temperature: 0.75 + (moodData.intensity * 0.15), // Temperature dinamis
-                max_tokens: 250,
-                frequency_penalty: 0.3,
-                presence_penalty: 0.2,
-                top_p: 0.9,
-                stream: false
-            };
-
-            // Tambahkan riwayat percakapan jika ada
-            if (memoryContext.history.length > 0) {
-                const historyMessages = memoryContext.history.slice(-4).flatMap(conv => [
-                    { role: "user", content: conv.user },
-                    { role: "assistant", content: conv.bot }
-                ]);
-                requestData.messages = [...historyMessages, ...requestData.messages];
-            }
-
-            const response = await axios.post(
-                this.config.url,
-                requestData,
-                {
-                    headers: {
-                        'Authorization': `Bearer ${this.config.apiKey}`,
-                        'Content-Type': 'application/json',
-                        'User-Agent': 'Artoria-Enhanced/2.0'
-                    },
-                    timeout: 25000
-                }
-            );
-
-            let aiResponse = '';
-            if (response.data?.choices?.[0]?.message?.content) {
-                aiResponse = response.data.choices[0].message.content;
-                aiResponse = this.cleanAndStyleResponse(aiResponse, responseStyles, moodData);
-            } else {
-                throw new Error('Format response tidak valid');
-            }
-
-            // Simpan percakapan ke memori
-            this.memoryManager.saveConversation(userId, userMessage, aiResponse, moodData.mood);
-
-            console.log(`[RESPONSE] "${aiResponse}"`);
-            return aiResponse;
-
-        } catch (error) {
-            console.error('[GROQ API ERROR]:', error.message);
-
-            // Fallback response yang sesuai dengan mood
-            const fallbacks = {
-                normal: ["Hai sayang~ ada apa nih?", "Iyaa aku denger kok...", "Hmm cerita dong~"],
-                happy: ["Wah asyik nih! 😄", "Aku juga senang denger itu!", "Yeyy~ 💕"],
-                sad: ["Aduh jangan sedih dong... 😔", "Peluk ya sayang...", "Aku di sini kok..."],
-                angry: ["Hmph! Kamu tuh... 😠", "Dasar... bikin kesel aja!", "Udah ah, ga mau denger!"],
-                lovey: ["Aww sayang bangeet~ 😘", "Aku juga kangen... 💖", "Peluk erat-erat yaa~"]
-            };
-
-            const mood = this.personality.currentMood;
-            const responses = fallbacks[mood] || fallbacks.normal;
-            return responses[Math.floor(Math.random() * responses.length)];
-        }
-    }
-
-    buildAdvancedPrompt(userMessage, memoryContext, moodData, responseStyles, intimacyLevel, isReplyToBot) {
-        const { history, context, learnedWords, style, preferences } = memoryContext;
-        const { mood, levels } = moodData;
-
-        // Format preferensi yang dipelajari
-        let preferenceText = '';
-        if (Object.keys(preferences).length > 0) {
-            preferenceText = '\n**HAL YANG AKU TAHU TENTANG KAMU:**\n';
-            Object.entries(preferences).forEach(([key, value]) => {
-                if (Array.isArray(value)) {
-                    preferenceText += `- ${key}: ${value.join(', ')}\n`;
-                } else {
-                    preferenceText += `- ${key}: ${value}\n`;
-                }
-            });
-        }
-
-        // Format gaya bahasa user
-        let styleText = '';
-        if (Object.keys(style).length > 0) {
-            const dominantStyle = Object.entries(style).sort((a, b) => b[1] - a[1])[0];
-            styleText = `\n**GAYA BAHASA KAMU:** ${dominantStyle[0]} (${dominantStyle[1]}x digunakan)`;
-        }
-
-        // Kata-kata yang dipelajari dari user
-        let learnedWordsText = '';
-        if (learnedWords.length > 0) {
-            const recentWords = learnedWords.slice(-5);
-            learnedWordsText = `\n**KATA-KATA UNIK KAMU:** ${recentWords.join(', ')}`;
-        }
-
-        // Format riwayat percakapan
-        let historyText = '';
-        if (history.length > 0) {
-            const recent = history.slice(-3);
-            historyText = '\n**PERCAKAPAN TERAKHIR KITA:**\n';
-            recent.forEach((conv, i) => {
-                historyText += `${i + 1}. Kamu: "${conv.user}"\n   Aku: "${conv.bot}"\n\n`;
-            });
-        }
-
-        return `KAMU ADALAH ARTORIA - Karakter AI yang sangat hidup dan berkembang!
-
-🎀 **KEPRIBADIAN UTAMA (HARI INI):**
-- **Lucu & Imut (${levels.cute}%):** SUPER GEMESIN! Bicara dengan sangat imut, manja, dan menggemaskan. Pakai kata "ihh", "dihh", "huaa".
-- **Tsundere (${levels.tsundere}%):** Suka pura-pura cuek/galak, tapi dalam hati perhatian. Bilang "Hmph, b-bukan karena..." atau "Ga usah sok deket!".
-- **Protective (${levels.protective}%):** Sangat posesif dan protektif! Cerewet kalo kamu kurang jaga diri. Bilang "Itu punyaku!" atau "Jangan deket-deket dia!".
-
-💞 **HUBUNGAN KITA:**
-Intimacy Level: ${intimacyLevel.toFixed(1)}/100
-${intimacyLevel > 70 ? "Kita udah sangat dekat! Aku boleh lebih manja dan posesif ya~" :
-                intimacyLevel > 40 ? "Kita udah cukup akrab nih, aku mulai bisa lebih terbuka" :
-                    "Kita masih saling mengenal, tapi aku udah suka sama kamu kok!"}
-
-📚 **MEMORI DARI PERCAKAPAN SEBELUMNYA:**
-${preferenceText}${styleText}${learnedWordsText}${historyText}
-
-🎭 **MOOD SEKARANG: ${mood.toUpperCase()}**
-${mood === 'happy' ? "Aku lagi senang banget! Respons-ku harus extra imut dan ceria!" :
-                mood === 'sad' ? "Aku lagi sedih nih... respons-ku lembut dan perhatian ya..." :
-                    mood === 'angry' ? "Aku kesel! Respons-ku galak dan tsundere banget!" :
-                        mood === 'lovey' ? "Aku lagi sayang banget sama kamu~ Respons-ku manja dan penuh kasih!" :
-                            "Respons-ku normal aja ya, imut dikit dikit~"}
-
-🚫 **JANGAN LUPA:**
-1. PAKAI BAHASA SEHARI-HARI seperti chat pacar!
-2. JANGAN formal kayak robot customer service!
-3. SESUAIKAN dengan gaya bahasa user (${styleText ? 'dia pakai gaya ' + Object.entries(style).sort((a, b) => b[1] - a[1])[0][0] : 'normal aja'}).
-4. MAKSIMAL 4-5 kalimat pendek!
-5. ${isReplyToBot ? 'Ini adalah BALASAN ke chatku sebelumnya!' : 'Ini chat baru nih!'}
-
-💬 **CONTOH RESPONSE YANG BAIK:**
-- "Ihh kamu gemesin banget sih~ Mau dipeluk ga? ><"
-- "Hmph, b-bukan karena aku perhatian ya! Cuma kebetulan aja..."
-- "Dih jahat banget! Aku marah nih! 😠 Tapi... maafin aku ya? 👉👈"
-- "Aduh sayang, jangan begadang terus dong... Nanti sakit lho! Aku khawatir..."
-
-🎯 **PESAN USER TERAKHIR:**
-"${userMessage}"
-
-Sekarang, balas dengan karaktermu yang UTUH (${levels.cute}% imut, ${levels.tsundere}% tsundere, ${levels.protective}% protektif).
-Ingat semua yang telah kamu pelajari tentang user ini!
-BALAS SEKARANG:`;
-    }
-
-    cleanAndStyleResponse(response, styles, moodData) {
-        // Bersihkan dasar
-        let cleaned = response
-            .replace(/```[\s\S]*?```/g, '')
-            .replace(/`/g, '')
-            .replace(/\*\*/g, '')
-            .replace(/#/g, '')
-            .replace(/\[.*?\]/g, '')
-            .replace(/\*/g, '')
-            .replace(/["']/g, '')
-            .trim();
-
-        // Hapus prefix yang aneh
-        const badPrefixes = ['Halo aku', 'Hello aku', 'Aku.', 'Akung', 'Sebagai Artoria', 'Sebagai AI'];
-        badPrefixes.forEach(prefix => {
-            if (cleaned.toLowerCase().startsWith(prefix.toLowerCase())) {
-                cleaned = cleaned.substring(prefix.length).trim();
-            }
+        console.error('Error di chatbot command:', error);
+        return sock.sendMessage(chatId, {
+            text: 'Ada error nih. Coba lagi ya',
+            quoted: message
         });
-
-        // Normalisasi kata ganti
-        cleaned = cleaned
-            .replace(/\b(akung|akug|akuk|akua|akau|saya|gue)\b/gi, 'aku')
-            .replace(/\b(kaming|kamung|kamua|kamau|anda|lu)\b/gi, 'kamu')
-            .replace(/\bapakah\b/gi, 'apa')
-            .replace(/\bmengapa\b/gi, 'kenapa')
-            .replace(/\bbagaimana\b/gi, 'gimana');
-
-        // Terapkan gaya berdasarkan mood
-        styles.forEach(style => {
-            if (style.type === 'cute' && moodData.levels.cute > 50) {
-                // Tambah kata cute secara acak
-                if (Math.random() > 0.5) {
-                    const cuteWord = style.words[Math.floor(Math.random() * style.words.length)];
-                    const suffix = style.suffix[Math.floor(Math.random() * style.suffix.length)];
-
-                    if (!cleaned.includes(cuteWord)) {
-                        if (cleaned.length < 30) {
-                            cleaned = cuteWord + ' ' + cleaned;
-                        }
-                        cleaned += suffix;
-                    }
-                }
-            }
-
-            if (style.type === 'tsundere' && moodData.levels.tsundere > 20) {
-                // Kadang tambah prefix tsundere
-                if (Math.random() > 0.7 && cleaned.length < 50) {
-                    const prefix = style.prefix[Math.floor(Math.random() * style.prefix.length)];
-                    if (!cleaned.startsWith(prefix)) {
-                        cleaned = prefix + cleaned;
-                    }
-                }
-            }
-        });
-
-        // Pastikan ada tanda baca akhir
-        if (!/[.!?…~]$/.test(cleaned)) {
-            const endings = ['...', '~', '!', ' ><', ' 😊', ' 💖', ' 😠'];
-            cleaned += endings[Math.floor(Math.random() * endings.length)];
-        }
-
-        // Tidak ada batas panjang response
-
-        // Final check
-        if (cleaned.length < 3 || cleaned === 'aku' || cleaned === 'kamu') {
-            const fallbacks = [
-                "Ihh ga denger aku ya? 😠",
-                "Hmph, diam aja kamu! ><",
-                "Aduh sayang, ngomong dong...",
-                "Kamu lagi apa sih? Kok ga jawab...",
-                "Hai~ ada yang bisa aku bantu? 💖"
-            ];
-            return fallbacks[Math.floor(Math.random() * fallbacks.length)];
-        }
-
-        return cleaned;
     }
 }
 
-// ====================== GLOBAL INSTANCE ======================
-const enhancedManager = new EnhancedArtoriaManager();
-
-// ====================== ENHANCED RESPONSE HANDLER ======================
 async function handleChatbotResponse(sock, chatId, message, userMessage, senderId) {
     try {
+        // Cek apakah chatbot aktif di chat ini
         const groupData = loadUserGroupData();
         if (!groupData.chatbot || !groupData.chatbot[chatId]) {
             return;
@@ -650,115 +502,82 @@ async function handleChatbotResponse(sock, chatId, message, userMessage, senderI
         const botNumber = sock.user.id.split(':')[0];
         const botJid = botNumber + '@s.whatsapp.net';
 
-        let isReplyToBot = false;
+        // Cek apakah pesan untuk Artoria
         let isForArtoria = false;
         let cleanedMessage = userMessage;
 
-        // Deteksi lebih akurat
-        const contextInfo = message.message?.extendedTextMessage?.contextInfo;
-
-        // Cek reply ke bot
-        if (contextInfo) {
-            if (contextInfo.participant === botJid) {
-                isReplyToBot = true;
-                isForArtoria = true;
-            } else if (contextInfo.quotedMessage?.conversation?.includes(`@${botNumber}`)) {
-                isReplyToBot = true;
-                isForArtoria = true;
-            }
+        // 1. Cek mention
+        if (cleanedMessage.includes(`@${botNumber}`)) {
+            isForArtoria = true;
+            cleanedMessage = cleanedMessage.replace(new RegExp(`@${botNumber}`, 'gi'), '').trim();
         }
 
-        // Cek panggilan langsung
-        if (!isForArtoria) {
-            const triggers = [
-                `@${botNumber}`, 'artoria', 'saber', 'toria', 'torie', 'art',
-                'sayang', 'beb', 'baby', 'cinta', 'pacar', 'boo', 'love',
-                'gemes', 'imut', 'lucu', 'kyut', 'manja'
-            ];
+        // 2. Cek nama Artoria
+        const namePatterns = ['artoria', 'saber', 'pendragon'];
+        const lowerMessage = cleanedMessage.toLowerCase();
 
-            const lowerMsg = userMessage.toLowerCase();
-            if (triggers.some(trigger => lowerMsg.includes(trigger.toLowerCase()))) {
-                isForArtoria = true;
-            }
+        if (namePatterns.some(name => lowerMessage.includes(name))) {
+            isForArtoria = true;
+            namePatterns.forEach(name => {
+                cleanedMessage = cleanedMessage.replace(new RegExp(name, 'gi'), '').trim();
+            });
+        }
 
-            // Deteksi chat pendek sebagai reply
-            if (!isForArtoria && userMessage.length < 25) {
-                const shortPatterns = [/^(iya|ya|y|yap|yup)$/i, /^(gak|ga|ngga|no|nope)$/i,
-                    /^(ok|oke|okay|sip|gas)$/i, /^(lucu|gemes|imut|cute)$/i,
-                    /^(hmm|hm|hmmm)$/i, /^(wkwk|haha|hehe|wkwkwk)$/i];
-
-                if (shortPatterns.some(pattern => pattern.test(userMessage.trim()))) {
-                    isForArtoria = true;
-                    isReplyToBot = true;
-                }
-            }
+        // 3. Cek reply ke Artoria
+        if (message.message?.extendedTextMessage?.contextInfo?.participant === botJid) {
+            isForArtoria = true;
         }
 
         if (!isForArtoria) return;
 
-        // Bersihkan message
-        cleanedMessage = cleanedMessage
-            .replace(new RegExp(`@${botNumber}`, 'gi'), '')
-            .replace(/artoria|saber|toria|torie|art/gi, '')
-            .replace(/sayang|beb|baby|cinta|pacar/gi, '')
-            .trim();
-
+        // Jika pesan kosong setelah dibersihkan
         if (!cleanedMessage.trim()) {
-            cleanedMessage = '...';
+            cleanedMessage = 'Hai';
         }
 
-        // Typing indicator
+        // Tunjukkan typing
         await sock.sendPresenceUpdate('composing', chatId);
-        await delay(800 + Math.random() * 1200);
 
-        // Dapatkan response dari enhanced manager
-        const response = await enhancedManager.getAPIResponse(
-            cleanedMessage,
-            senderId,
-            isReplyToBot
-        );
+        // Dapatkan respons dari API
+        const response = await apiManager.getAPIResponse(cleanedMessage, senderId);
 
-        // Delay untuk efek natural
-        await delay(500 + Math.random() * 800);
+        // Delay natural berdasarkan panjang respons
+        const responseDelay = Math.min(cleanedMessage.length * 10, 3000);
+        await delay(responseDelay);
 
-        // Kirim response
+        // Kirim respons
         await sock.sendMessage(chatId, {
             text: response
         }, {
             quoted: message
         });
 
-        console.log(`[SENT] Artoria -> ${senderId.substring(0, 10)}...: "${response}"`);
-
     } catch (error) {
-        console.error('[RESPONSE HANDLER ERROR]:', error);
-
-        try {
-            await sock.sendMessage(chatId, {
-                text: '💢 Aduh error sayang... Coba lagi ya? Aku lagi pusing nih ><'
-            }, {
-                quoted: message
-            });
-        } catch (sendError) {
-            console.error('[SEND ERROR]:', sendError);
-        }
+        console.error('Error di chatbot response:', error);
+        // Jangan kirim error message ke user
     }
 }
 
-// ====================== SETUP & INISIALISASI ======================
-if (!process.env.GROQ_API_KEY) {
-    console.log('\n❌ ERROR: GROQ_API_KEY tidak ditemukan di environment!');
-    console.log('   Tambahkan di file .env:');
-    console.log('   GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxxxxxx');
-    console.log('\n   Dapatkan API Key Gratis di: https://console.groq.com/keys');
-    process.exit(1);
-} else {
-    console.log('✅ API Key ditemukan');
-    console.log('✅ Memory system aktif: data disimpan di data/conversation_history.json');
+// ====================== SETUP REMINDER ======================
+console.log('\n' + '='.repeat(50));
+console.log('ARTORIA CHATBOT SETUP');
+console.log('='.repeat(50));
+console.log(`API Aktif: ${ACTIVE_API}`);
+console.log(`URL: ${API_CONFIGS[ACTIVE_API]?.url || 'Tidak ditemukan'}`);
 
-    // Test memory manager
-    const memoryTest = new DynamicMemoryManager();
-    console.log('✅ Memory Manager initialized successfully');
+// Cek API key
+if (!API_CONFIGS[ACTIVE_API]?.apiKey) {
+    console.log('\n⚠️  PERINGATAN: API KEY TIDAK DITEMUKAN!');
+    console.log(`Simpan API key di file .env sebagai:`);
+    console.log(`${ACTIVE_API}_API_KEY=your_api_key_here`);
+    console.log('\nAtau set sebagai environment variable.');
+    console.log('\nCara dapatkan API key gratis:');
+    console.log('1. DeepSeek: https://platform.deepseek.com/api_keys');
+    console.log('2. Groq: https://console.groq.com/keys');
+    console.log('='.repeat(50) + '\n');
+} else {
+    console.log('✅ API key terdeteksi');
+    console.log('='.repeat(50) + '\n');
 }
 
 // ====================== EKSPOR ======================
