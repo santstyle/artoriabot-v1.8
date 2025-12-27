@@ -1,0 +1,199 @@
+{
+  "categories": {
+    "hewan": {
+      "name": "🐯 Hewan & Binatang",
+      "description": "Tebak nama hewan dari seluruh dunia",
+      "difficulty": "easy",
+      "tags": [
+        "binatang",
+        "fauna",
+        "satwa"
+      ],
+      "words": [
+        {
+          "word": "HARIMAU",
+          "clue": "Kucing besar, raja hutan, punya belang",
+          "synonyms": [
+            "macan",
+            "tiger"
+          ],
+          "difficulty": 1
+        },
+        {
+          "word": "GAJAH",
+          "clue": "Hewan terbesar darat, punya belalai dan gading",
+          "synonyms": [
+            "elephant"
+          ],
+          "difficulty": 1
+        },
+        {
+          "word": "KOALA",
+          "clue": "Hewan Australia, suka eucalyptus, sering tidur",
+          "synonyms": [],
+          "difficulty": 2
+        },
+        {
+          "word": "PENGUIN",
+          "clue": "Burung tidak bisa terbang, hidup di kutub, berenang ahli",
+          "synonyms": [],
+          "difficulty": 2
+        },
+        {
+          "word": "KOMODO",
+          "clue": "Kadal purba terbesar, hanya ada di Indonesia",
+          "synonyms": [
+            "ora"
+          ],
+          "difficulty": 3
+        }
+      ]
+    },
+    "buah": {
+      "name": "🍎 Buah-buahan",
+      "description": "Tebak nama buah lokal dan internasional",
+      "difficulty": "easy",
+      "tags": [
+        "makanan",
+        "sehat",
+        "tropis"
+      ],
+      "words": [
+        {
+          "word": "APEL",
+          "clue": "Buah kulit halus, merah/hijau, renyah",
+          "synonyms": [
+            "apple"
+          ],
+          "difficulty": 1
+        },
+        {
+          "word": "MANGGA",
+          "clue": "Buah tropis manis, kulit hijau/kuning/orange",
+          "synonyms": [
+            "mango"
+          ],
+          "difficulty": 1
+        },
+        {
+          "word": "DURIAN",
+          "clue": "Raja buah, kulit berduri tajam, aroma kuat",
+          "synonyms": [],
+          "difficulty": 2
+        },
+        {
+          "word": "RAMBUTAN",
+          "clue": "Buah merah berambut, daging putih, manis",
+          "synonyms": [],
+          "difficulty": 2
+        },
+        {
+          "word": "SALAK",
+          "clue": "Buah kulit bersisik seperti ular, sepat manis",
+          "synonyms": [
+            "snake fruit"
+          ],
+          "difficulty": 3
+        }
+      ]
+    },
+    "negara": {
+      "name": "🌍 Negara & Ibukota",
+      "description": "Tebak nama negara dan ibukota dunia",
+      "difficulty": "medium",
+      "tags": [
+        "geografi",
+        "dunia",
+        "peta"
+      ],
+      "words": [
+        {
+          "word": "INDONESIA",
+          "clue": "Negara kepulauan terbesar, ibukota Jakarta",
+          "synonyms": [
+            "RI",
+            "Nusantara"
+          ],
+          "difficulty": 1
+        },
+        {
+          "word": "JEPANG",
+          "clue": "Negeri matahari terbit, ibukota Tokyo",
+          "synonyms": [
+            "Japan",
+            "Nippon"
+          ],
+          "difficulty": 1
+        },
+        {
+          "word": "AMERIKASERIKAT",
+          "clue": "Negara adidaya, ibukota Washington DC",
+          "synonyms": [
+            "USA",
+            "America"
+          ],
+          "difficulty": 1
+        },
+        {
+          "word": "BRASIL",
+          "clue": "Negara Amerika Selatan, ibukota Brasilia",
+          "synonyms": [
+            "Brazil"
+          ],
+          "difficulty": 2
+        },
+        {
+          "word": "AUSTRALIA",
+          "clue": "Negara benua, ibukota Canberra",
+          "synonyms": [
+            "Oz"
+          ],
+          "difficulty": 1
+        }
+      ]
+    },
+    "film": {
+      "name": "🎬 Film & Serial",
+      "description": "Tebak judul film terkenal",
+      "difficulty": "medium",
+      "tags": [
+        "hiburan",
+        "cinema",
+        "hollywood"
+      ],
+      "words": [
+        {
+          "word": "AVATAR",
+          "clue": "Film sci-fi James Cameron, manusia ke planet Pandora",
+          "synonyms": [],
+          "difficulty": 1
+        },
+        {
+          "word": "TITANIC",
+          "clue": "Film kapal tenggelam, Leonardo DiCaprio dan Kate Winslet",
+          "synonyms": [],
+          "difficulty": 1
+        },
+        {
+          "word": "AVENGERS",
+          "clue": "Film superhero Marvel, pertemuan semua pahlawan",
+          "synonyms": [],
+          "difficulty": 1
+        },
+        {
+          "word": "HARRY POTTER",
+          "clue": "Film penyihir muda, sekolah Hogwarts",
+          "synonyms": [],
+          "difficulty": 1
+        },
+        {
+          "word": "STAR WARS",
+          "clue": "Film perang bintang, light saber, Darth Vader",
+          "synonyms": [],
+          "difficulty": 1
+        }
+      ]
+    }
+  },
+  "customWords": []
+}

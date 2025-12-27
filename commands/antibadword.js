@@ -1,25 +1,23 @@
 const { handleAntiBadwordCommand } = require('../lib/antibadword');
-const isAdminHelper = require('../lib/isAdmin');
 
 async function antibadwordCommand(sock, chatId, message, senderId, isSenderAdmin) {
     try {
-        if (!isSenderAdmin) {
-            await sock.sendMessage(chatId, {
-                text: 'Wah, cuma admin yang bisa atur antibadword nih~'
-            });
-            return;
-        }
-
         // Extract match from message
         const text = message.message?.conversation ||
             message.message?.extendedTextMessage?.text || '';
+
+        // Ambil argumen setelah .antibadword
         const match = text.split(' ').slice(1).join(' ');
 
-        await handleAntiBadwordCommand(sock, chatId, message, match);
+        await handleAntiBadwordCommand(sock, chatId, message, match, senderId);
+
     } catch (error) {
         console.error('Error di antibadword command:', error);
+
         await sock.sendMessage(chatId, {
-            text: 'Aduh, ada error waktu atur antibadword nih'
+            text: '❌ *TERJADI KESALAHAN!*\n\n' +
+                'Terjadi error saat memproses perintah antibadword.\n' +
+                'Silakan coba lagi beberapa saat.'
         });
     }
 }

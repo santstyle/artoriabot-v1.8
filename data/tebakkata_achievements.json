@@ -1,0 +1,29 @@
+{
+  "achievements": [
+    {
+      "id": "first_blood",
+      "name": "🩸 First Blood",
+      "description": "Menang game pertama kali",
+      "icon": "🩸",
+      "points": 50,
+      "condition": {
+        "type": "games_won",
+        "threshold": 1
+      },
+      "secret": false
+    },
+    {
+      "id": "word_master",
+      "name": "📚 Master Kata",
+      "description": "Tebak 50 kata dengan benar",
+      "icon": "📚",
+      "points": 200,
+      "condition": {
+        "type": "words_guessed",
+        "threshold": 50
+      },
+      "secret": false
+    }
+  ],
+  "userAchievements": {}
+}

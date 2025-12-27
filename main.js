@@ -50,7 +50,7 @@ const newsCommand = require('./commands/news');
 const kickCommand = require('./commands/kick');
 const toimageCommand = require('./commands/toimage');
 const tovideoCommand = require('./commands/tovideo');
-const { lyricsCommand } = require('./commands/lyrics');
+const { lyrics: lyricsCommand } = require('./commands/lyrics');
 const { clearCommand } = require('./commands/clear');
 const pingCommand = require('./commands/ping');
 const aliveCommand = require('./commands/alive');
@@ -68,13 +68,17 @@ const instagramCommand = require('./commands/instagram');
 const facebookCommand = require('./commands/facebook');
 const playCommand = require('./commands/play');
 const tiktokCommand = require('./commands/tiktok');
-const songCommand = require('./commands/song');
+const { song: songCommand } = require('./commands/song');
+const { pinterest } = require('./commands/pinterest');
+const { twitter } = require('./commands/twitter');
 const { handleTranslateCommand } = require('./commands/translate');
 const { handleSsCommand } = require('./commands/ss');
 const { addCommandReaction, handleAreactCommand } = require('./lib/reactions');
-const videoCommand = require('./commands/video');
+const youtubeModule = require('./commands/youtube');
 const stickercropCommand = require('./commands/stickercrop');
 const { startAbsen, addAbsen, finishAbsen } = require('./commands/absen');
+const tebakkataCommand = require('./commands/tebakkata');
+
 // Global settings
 global.packname = settings.packname;
 global.author = settings.author;
@@ -243,7 +247,7 @@ async function handleMessages(sock, messageUpdate, printLog) {
                 break;
             }
             case userMessage === '.startabsen':
-                const startAbsenText = rawText.slice(11).trim();
+                const startAbsenText = rawText.slice(12).trim();
                 await startAbsen(sock, message, startAbsenText);
                 commandExecuted = true;
                 break;
@@ -592,6 +596,9 @@ async function handleMessages(sock, messageUpdate, printLog) {
             case userMessage.startsWith('.instagram') || userMessage.startsWith('.insta') || userMessage.startsWith('.ig'):
                 await instagramCommand(sock, chatId, message);
                 break;
+            case userMessage.startsWith('.pinterest') || userMessage.startsWith('.pin') || userMessage.startsWith('.pins'):
+                await pinterest(sock, chatId, message);
+                break;
             case userMessage.startsWith('.fb') || userMessage.startsWith('.facebook'):
                 await facebookCommand(sock, chatId, message);
                 break;
@@ -601,8 +608,8 @@ async function handleMessages(sock, messageUpdate, printLog) {
             case userMessage.startsWith('.play') || userMessage.startsWith('.mp3') || userMessage.startsWith('.ytmp3') || userMessage.startsWith('.song'):
                 await songCommand(sock, chatId, message);
                 break;
-            case userMessage.startsWith('.video') || userMessage.startsWith('.ytmp4'):
-                await videoCommand(sock, chatId, message);
+            case userMessage.startsWith('.video') || userMessage.startsWith('.youtube'):
+                await youtubeModule.yt(sock, chatId, message);
                 break;
             case userMessage.startsWith('.tiktok') || userMessage.startsWith('.tt'):
                 await tiktokCommand(sock, chatId, message);
@@ -664,6 +671,9 @@ async function handleMessages(sock, messageUpdate, printLog) {
                 break;
             case userMessage.startsWith('.remini') || userMessage.startsWith('.enhance') || userMessage.startsWith('.upscale'):
                 await reminiCommand(sock, chatId, message, userMessage.split(' ').slice(1));
+                break;
+            case userMessage.startsWith('.tebakkata'):
+                await tebakkataCommand.tebakkata(sock, chatId, message);
                 break;
             default:
                 if (isGroup) {

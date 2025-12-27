@@ -2,8 +2,8 @@ const settings = require('../settings');
 
 async function menuCommand(sock, chatId, message) {
     const menuMessage = `
-👑 *${settings.botName || 'ARTORIA BOT'}*  
-Version: ${settings.version || '1.6'}  
+*${settings.botName || 'Artoria Pendragon | Bot'}*  
+Version: ${settings.version || '1.8'}  
 
 *DESCRIPTION*
 Artoria Bot is a multifunctional WhatsApp bot designed to assist with group and personal activities.
@@ -31,25 +31,27 @@ Here are the available command menus in Artoria Bot:
 • .clear
 • .tagall
 • .hidetag
-• .chatbot
 • .resetlink
+• .chatbot
 
 *GENERAL*
 • .help
 • .menu
-• .startabsen
 • .ping
 • .alive
 • .owner
+• .groupinfo
+• .staff
+• .startabsen
 • .joke
 • .meme
 • .quote
 • .fact
 • .news
-• .groupinfo
-• .staff
 • .weather <city>
-• .lyrics <song_title>
+
+*GAMES*
+• .tebakkata
 
 *IMAGE/STICKER*
 • .sticker <image>
@@ -61,13 +63,15 @@ Here are the available command menus in Artoria Bot:
 
 
 *DOWNLOADER*
-• .play <link>
+• .lyrics <judul lagu>
 • .song <song_name>
+• .play <link>
+• .pin <kata kunci gambar>
+• .twitter <link>
 • .instagram <link>
-• .video <link>
+• .youtube <link>
 • .facebook <link>
 • .tiktok <link>
-• .ytmp4 <link>
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Powered & Modified By SantStyle
