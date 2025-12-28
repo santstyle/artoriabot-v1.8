@@ -63,6 +63,12 @@ brew install ffmpeg
 sudo apt install python3 python3-pip
 pip3 install yt-dlp
 ```
+Atau curl langsung 
+```bash
+sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
+sudo chmod a+rx /usr/local/bin/yt-dlp
+yt-dlp --version
+```
 
 ### Langkah 4: Konfigurasi Environment
 
