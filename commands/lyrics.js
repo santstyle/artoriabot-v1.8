@@ -1,225 +1,308 @@
 const axios = require('axios');
-const fs = require('fs');
-const path = require('path');
 
-// Multiple lyrics API providers with fallback
-const lyricsApis = [
-    {
-        name: "Lyrics.ovh",
-        url: "https://api.lyrics.ovh/v1",
-        method: "GET",
-        parse: (data) => data.lyrics,
-        getTitle: (artist, title) => `${artist} - ${title}`
-    },
-    {
-        name: "SomeRandomAPI",
-        url: "https://some-random-api.com/lyrics",
-        method: "GET",
-        parse: (data) => data.lyrics,
-        getTitle: (data) => data.title || data.title
-    },
-    {
-        name: "GeniusAPI",
-        url: "https://genius.com/api/search",
-        method: "GET",
-        parse: (data) => {
-            // Genius API returns search results, need to extract lyrics URL
-            if (data.response?.hits && data.response.hits.length > 0) {
-                return data.response.hits[0].result.url;
-            }
-            return null;
-        },
-        getTitle: (data) => {
-            if (data.response?.hits && data.response.hits.length > 0) {
-                return data.response.hits[0].result.title;
-            }
-            return null;
-        }
-    },
-    {
-        name: "AZLyricsAPI",
-        url: "https://api.lyrics.az",
-        method: "GET",
-        parse: (data) => data.lyrics,
-        getTitle: (data) => data.title
-    }
-];
-
-// Extract artist and title from search query
+// Extract artist and title from search query - IMPROVED VERSION
 function parseSongQuery(query) {
-    const separators = [' - ', ' – ', ' — ', ' // ', ' by ', ' dari '];
+    query = query.trim();
 
-    for (const sep of separators) {
-        if (query.includes(sep)) {
-            const parts = query.split(sep);
-            return {
-                artist: parts[0].trim(),
-                title: parts.slice(1).join(sep).trim()
-            };
-        }
+    if (!query) {
+        return { artist: null, title: '' };
     }
 
-    // If no separator found, try common patterns
+    // Common patterns to detect
     const patterns = [
-        /^(.+?)\s+-\s+(.+)$/,  // "Artist - Title"
-        /^(.+?)\s+by\s+(.+)$/i, // "Title by Artist"
-        /^(.+?)\s+dari\s+(.+)$/i // "Title dari Artist"
+        // "Artist - Title" pattern (most common)
+        { regex: /^([^-]+)\s*-\s*(.+)$/, artist: 1, title: 2 },
+        // "Title by Artist" pattern
+        { regex: /^(.+)\s+by\s+(.+)$/i, artist: 2, title: 1 },
+        // "Artist: Title" pattern
+        { regex: /^([^:]+):\s*(.+)$/, artist: 1, title: 2 },
+        // "Title (feat. Artist)" pattern
+        { regex: /^(.+)\s+\(feat\.\s*(.+)\)$/i, artist: 2, title: 1 },
+        // "Title ft. Artist" pattern
+        { regex: /^(.+)\s+ft\.\s*(.+)$/i, artist: 2, title: 1 },
     ];
 
     for (const pattern of patterns) {
-        const match = query.match(pattern);
+        const match = query.match(pattern.regex);
         if (match) {
             return {
-                artist: match[2].trim(),
-                title: match[1].trim()
+                artist: match[pattern.artist].trim(),
+                title: match[pattern.title].trim()
             };
         }
     }
 
-    // If no pattern matches, assume whole query is title
+    // For multi-word queries like "alan walker faded"
+    const words = query.split(/\s+/);
+
+    if (words.length >= 3) {
+        // Check for known artist patterns
+        const knownArtists = [
+            'alan walker', 'ed sheeran', 'taylor swift', 'bruno mars',
+            'justin bieber', 'ariana grande', 'drake', 'post malone',
+            'billie eilish', 'the weeknd', 'coldplay', 'maroon 5',
+            'eminem', 'rihanna', 'beyonce', 'shakira', 'selena gomez',
+            'blink-182', 'one direction', 'bts', 'blackpink',
+            'nirvana', 'queen', 'the beatles', 'michael jackson'
+        ];
+
+        // Try to find artist name in the beginning
+        for (let i = 2; i <= Math.min(4, words.length - 1); i++) {
+            const possibleArtist = words.slice(0, i).join(' ').toLowerCase();
+            for (const artist of knownArtists) {
+                if (possibleArtist === artist || artist.includes(possibleArtist)) {
+                    return {
+                        artist: words.slice(0, i).join(' '),
+                        title: words.slice(i).join(' ')
+                    };
+                }
+            }
+        }
+
+        // If no known artist, assume last word is title (for "alan walker faded")
+        if (words.length === 3) {
+            return {
+                artist: words.slice(0, 2).join(' '), // "alan walker"
+                title: words[2] // "faded"
+            };
+        }
+    }
+
+    // For queries like "18" or single word titles
+    // Try to guess if it's a common song title
+    const commonSongs = {
+        '18': { title: '18', artist: 'One Direction' },
+        'faded': { title: 'Faded', artist: 'Alan Walker' },
+        'shape': { title: 'Shape of You', artist: 'Ed Sheeran' },
+        'perfect': { title: 'Perfect', artist: 'Ed Sheeran' },
+        'sorry': { title: 'Sorry', artist: 'Justin Bieber' },
+        'hello': { title: 'Hello', artist: 'Adele' },
+        'blank': { title: 'Blank Space', artist: 'Taylor Swift' },
+        'thunder': { title: 'Thunder', artist: 'Imagine Dragons' },
+        'believer': { title: 'Believer', artist: 'Imagine Dragons' },
+        'havana': { title: 'Havana', artist: 'Camila Cabello' }
+    };
+
+    const lowerQuery = query.toLowerCase();
+    if (commonSongs[lowerQuery]) {
+        return {
+            title: commonSongs[lowerQuery].title,
+            artist: commonSongs[lowerQuery].artist
+        };
+    }
+
+    // Default: treat everything as title
     return {
         artist: null,
-        title: query.trim()
+        title: query
     };
 }
 
+// Clean HTML entities from text
+function cleanText(text) {
+    if (!text) return '';
+
+    return text
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#039;/g, "'")
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&#x27;/g, "'")
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<[^>]+>/g, '')
+        .replace(/\r\n/g, '\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+}
+
 // Split long text into WhatsApp-friendly chunks
-function splitLyrics(lyrics, title, maxLength = 4000) {
+function splitLyrics(lyrics, maxLength = 3500) {
     const chunks = [];
+    let currentChunk = '';
+
     const lines = lyrics.split('\n');
-    let currentChunk = `🎵 *${title}*\n\n`;
 
     for (const line of lines) {
         if ((currentChunk + line + '\n').length > maxLength) {
-            chunks.push(currentChunk);
-            currentChunk = '';
+            if (currentChunk) {
+                chunks.push(currentChunk.trim());
+                currentChunk = '';
+            }
         }
         currentChunk += line + '\n';
     }
 
-    if (currentChunk) {
-        chunks.push(currentChunk);
+    if (currentChunk.trim()) {
+        chunks.push(currentChunk.trim());
     }
 
     return chunks;
 }
 
-// Get lyrics from APIs with fallback
-async function getLyricsFromAPI(artist, title, apiIndex = 0) {
-    if (apiIndex >= lyricsApis.length) {
-        return { success: false, error: "Semua API gagal" };
-    }
-
-    const api = lyricsApis[apiIndex];
-
+// Genius API implementation
+async function getLyricsFromGenius(artist, title) {
     try {
-        console.log(`Mencoba API ${api.name}...`);
-
-        let response;
-        if (api.name === "GeniusAPI") {
-            // Genius API requires search
-            const searchQuery = artist ? `${title} ${artist}` : title;
-            response = await axios.get(`${api.url}?q=${encodeURIComponent(searchQuery)}`, {
-                timeout: 15000,
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                    'Accept': 'application/json'
-                }
-            });
-        } else if (artist && title && api.name !== "SomeRandomAPI") {
-            // APIs that support artist/title separation
-            response = await axios.get(`${api.url}/${encodeURIComponent(artist)}/${encodeURIComponent(title)}`, {
-                timeout: 15000,
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                    'Accept': 'application/json'
-                }
-            });
-        } else {
-            // APIs that only need title
-            response = await axios.get(`${api.url}?title=${encodeURIComponent(title)}`, {
-                timeout: 15000,
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                    'Accept': 'application/json'
-                }
-            });
+        // Construct search query
+        let searchQuery = title;
+        if (artist) {
+            searchQuery = `${artist} ${title}`;
         }
 
-        const data = response.data;
-        const lyrics = api.parse(data);
+        console.log(`Searching Genius for: ${searchQuery}`);
 
-        if (lyrics) {
-            let songTitle;
-            if (api.name === "GeniusAPI") {
-                songTitle = api.getTitle(data) || title;
-            } else {
-                songTitle = artist ? `${artist} - ${title}` : title;
+        // Search on Genius
+        const searchUrl = `https://genius.com/api/search/multi?q=${encodeURIComponent(searchQuery)}`;
+
+        const searchResponse = await axios.get(searchUrl, {
+            timeout: 20000,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                'Accept': 'application/json',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Referer': 'https://genius.com/'
             }
+        });
+
+        const searchData = searchResponse.data;
+
+        // Find song in results
+        let songResult = null;
+        if (searchData.response && searchData.response.sections) {
+            for (const section of searchData.response.sections) {
+                if (section.type === 'song' && section.hits && section.hits.length > 0) {
+                    // Try to find the best match
+                    for (const hit of section.hits) {
+                        const result = hit.result;
+                        const resultTitle = result.title.toLowerCase();
+                        const resultArtist = result.primary_artist.name.toLowerCase();
+
+                        // Check for match
+                        if (title && resultTitle.includes(title.toLowerCase())) {
+                            songResult = result;
+                            break;
+                        } else if (artist && resultArtist.includes(artist.toLowerCase())) {
+                            songResult = result;
+                            break;
+                        }
+                    }
+
+                    // If no specific match found, use first result
+                    if (!songResult && section.hits[0]) {
+                        songResult = section.hits[0].result;
+                    }
+
+                    if (songResult) break;
+                }
+            }
+        }
+
+        if (!songResult) {
+            console.log('No song found on Genius');
+            return null;
+        }
+
+        console.log(`Found song: ${songResult.title} by ${songResult.primary_artist.name}`);
+
+        // Get lyrics page
+        const lyricsUrl = songResult.url;
+        console.log(`Fetching lyrics from: ${lyricsUrl}`);
+
+        const lyricsResponse = await axios.get(lyricsUrl, {
+            timeout: 20000,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.5',
+                'Referer': 'https://genius.com/'
+            }
+        });
+
+        const html = lyricsResponse.data;
+
+        // Extract lyrics using Genius specific selectors
+        let lyrics = '';
+
+        // Method 1: Try data-lyrics-container attribute
+        const lyricsContainerRegex = /<div[^>]*data-lyrics-container="true"[^>]*>([\s\S]*?)<\/div>/g;
+        let match;
+        while ((match = lyricsContainerRegex.exec(html)) !== null) {
+            lyrics += cleanText(match[1]) + '\n\n';
+        }
+
+        // Method 2: Try .Lyrics__Container class (newer Genius)
+        if (!lyrics || lyrics.length < 100) {
+            const containerRegex = /<div[^>]*class="[^"]*Lyrics__Container[^"]*"[^>]*>([\s\S]*?)<\/div>/g;
+            while ((match = containerRegex.exec(html)) !== null) {
+                lyrics += cleanText(match[1]) + '\n\n';
+            }
+        }
+
+        // Method 3: Try .lyrics class (older Genius)
+        if (!lyrics || lyrics.length < 100) {
+            const lyricsRegex = /<div[^>]*class="[^"]*lyrics[^"]*"[^>]*>([\s\S]*?)<\/div>/s;
+            const lyricsMatch = html.match(lyricsRegex);
+            if (lyricsMatch) {
+                lyrics = cleanText(lyricsMatch[1]);
+            }
+        }
+
+        // Clean up the lyrics
+        lyrics = cleanText(lyrics);
+
+        if (lyrics && lyrics.length > 50) {
+            // Remove common unwanted text
+            lyrics = lyrics
+                .replace(/\d+\s+ContributorsTranslation(s?)/gi, '')
+                .replace(/You might also like/g, '')
+                .replace(/Embed/g, '')
+                .trim();
 
             return {
                 success: true,
                 lyrics: lyrics,
-                title: songTitle,
-                api: api.name,
-                artist: artist || "Unknown Artist",
-                source: api.name
+                title: songResult.title,
+                artist: songResult.primary_artist.name,
+                source: "Genius",
+                url: lyricsUrl
             };
         } else {
-            console.log(`API ${api.name} tidak mengembalikan lirik`);
-            return await getLyricsFromAPI(artist, title, apiIndex + 1);
+            // Return URL if lyrics extraction failed
+            return {
+                success: true,
+                lyrics: `Lirik lengkap tersedia di:\n${lyricsUrl}`,
+                title: songResult.title,
+                artist: songResult.primary_artist.name,
+                source: "Genius (Link)",
+                url: lyricsUrl
+            };
         }
+
     } catch (error) {
-        console.log(`API ${api.name} gagal:`, error.message);
-        return await getLyricsFromAPI(artist, title, apiIndex + 1);
+        console.error('Genius API error:', error.message);
+        return null;
     }
 }
 
-// Alternative: Scrape lyrics from websites (fallback)
-async function scrapeLyrics(artist, title) {
-    try {
-        // Try to get from lyrics.wikia (if still available)
-        const formattedArtist = artist ? encodeURIComponent(artist.replace(/\s+/g, '_')) : '';
-        const formattedTitle = encodeURIComponent(title.replace(/\s+/g, '_'));
+// Main function to get lyrics
+async function getLyrics(artist, title) {
+    console.log(`Mencari lirik: ${artist || 'Unknown'} - ${title}`);
 
-        const response = await axios.get(`https://lyrics.fandom.com/wiki/${formattedArtist}:${formattedTitle}`, {
-            timeout: 10000,
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            }
-        });
+    // Always use Genius as primary source
+    const geniusResult = await getLyricsFromGenius(artist, title);
 
-        // Simple HTML parsing for lyrics (this is a basic example)
-        const html = response.data;
-        const lyricsMatch = html.match(/<div class='lyricbox'>(.*?)<\/div>/s);
-
-        if (lyricsMatch) {
-            let lyrics = lyricsMatch[1]
-                .replace(/<br\s*\/?>/gi, '\n')
-                .replace(/<[^>]+>/g, '')
-                .replace(/&amp;/g, '&')
-                .replace(/&lt;/g, '<')
-                .replace(/&gt;/g, '>')
-                .replace(/&quot;/g, '"')
-                .replace(/&#039;/g, "'")
-                .trim();
-
-            if (lyrics.length > 100) {
-                return {
-                    success: true,
-                    lyrics: lyrics,
-                    title: `${artist} - ${title}`,
-                    api: "LyricsFandom",
-                    artist: artist,
-                    source: "Lyrics Fandom"
-                };
-            }
-        }
-    } catch (error) {
-        console.log('Scraping gagal:', error.message);
+    if (geniusResult) {
+        return geniusResult;
     }
 
-    return { success: false, error: "Gagal mengambil lirik" };
+    // Fallback: Provide search link
+    const searchQuery = encodeURIComponent(`${artist || ''} ${title} lyrics`);
+    return {
+        success: false,
+        error: "Lirik tidak ditemukan",
+        searchUrl: `https://www.google.com/search?q=${searchQuery}`
+    };
 }
 
 // Main lyrics command function
@@ -228,34 +311,14 @@ async function lyricsCommand(sock, chatId, songTitle, message) {
         // Check if songTitle is provided
         if (!songTitle || songTitle.trim() === '') {
             await sock.sendMessage(chatId, {
-                text: `🎵 *Pencari Lirik Lagu*\n\n` +
-                    `*Cara penggunaan:*\n` +
-                    `.lyrics <judul lagu>\n` +
-                    `.lirik <judul lagu>\n\n` +
-                    `*Format yang didukung:*\n` +
-                    `.lyrics Judul Lagu\n` +
-                    `.lyrics Judul Lagu - Nama Artis\n` +
-                    `.lyrics Nama Artis - Judul Lagu\n` +
-                    `.lirik Judul Lagu by Nama Artis\n\n` +
-                    `*Contoh:*\n` +
-                    `.lyrics Alan Walker Faded\n` +
-                    `.lirik Bruno Mars - That's What I Like\n` +
-                    `.lyrics Perfect by Ed Sheeran\n\n` +
-                    `*Fitur:*\n` +
-                    `• Multiple API backup\n` +
-                    `• Auto artist/title detection\n` +
-                    `• Split long lyrics\n` +
-                    `• Smart search`
+                text: `Fitur .lyrics digunakan untuk mencari lirik lagu.
+
+Cara penggunaan: ketik \`.lyrics <judul lagu>\``
             }, { quoted: message });
             return;
         }
 
-        // Send initial processing message
-        const processingMsg = await sock.sendMessage(chatId, {
-            text: `🔍 *Mencari lirik...*\n\n` +
-                `"${songTitle.substring(0, 50)}${songTitle.length > 50 ? '...' : ''}"\n\n` +
-                `⏳ Mohon tunggu sebentar...`
-        }, { quoted: message });
+
 
         try {
             // Parse artist and title from query
@@ -263,84 +326,45 @@ async function lyricsCommand(sock, chatId, songTitle, message) {
             const artist = parsed.artist;
             const title = parsed.title;
 
-            // Update status
-            await sock.sendMessage(chatId, {
-                text: `🔍 *Mencari lirik...*\n\n` +
-                    `Judul: ${title}\n` +
-                    `${artist ? `Artis: ${artist}\n` : ''}` +
-                    `⏳ Menunggu hasil...`,
-                edit: processingMsg.key
-            });
+            console.log(`Parsed: Artist="${artist}", Title="${title}"`);
 
-            // Try to get lyrics from APIs
-            let lyricsData = await getLyricsFromAPI(artist, title);
-
-            // If API fails, try scraping
-            if (!lyricsData.success) {
-                await sock.sendMessage(chatId, {
-                    text: `🔄 *Mencoba metode alternatif...*\n\n` +
-                        `API tidak merespons, mencoba sumber lain...`,
-                    edit: processingMsg.key
-                });
-
-                if (artist) {
-                    lyricsData = await scrapeLyrics(artist, title);
-                }
-            }
+            // Try to get lyrics
+            const lyricsData = await getLyrics(artist, title);
 
             if (!lyricsData.success) {
                 await sock.sendMessage(chatId, {
-                    text: `❌ *Lirik Tidak Ditemukan!*\n\n` +
-                        `Lirik untuk "${songTitle}" tidak ditemukan.\n\n` +
-                        `*Coba:*\n` +
-                        `1. Periksa penulisan judul/artis\n` +
-                        `2. Gunakan format: "Judul - Artis"\n` +
-                        `3. Cari dengan judul bahasa Inggris\n` +
-                        `4. Coba lagu lain`,
-                    edit: processingMsg.key
+                    text: `Lirik Tidak Ditemukan
+
+"${songTitle}" tidak ditemukan.
+
+Anda dapat mencari manual di:
+${lyricsData.searchUrl}
+
+Tips untuk pencarian berikutnya:
+• Gunakan format: "Judul - Artis"
+• Contoh: .lyrics faded - alan walker
+• Contoh: .lyrics shape of you - ed sheeran
+
+Atau coba lagu populer:
+• .lyrics faded - alan walker
+• .lyrics perfect - ed sheeran
+• .lyrics sorry - justin bieber`
                 });
                 return;
             }
 
-            // Check if lyrics is a URL (Genius API case)
-            if (lyricsData.lyrics.startsWith('http')) {
-                await sock.sendMessage(chatId, {
-                    text: `✅ *Lirik Ditemukan!*\n\n` +
-                        `Lirik tersedia di link berikut:\n` +
-                        `${lyricsData.lyrics}\n\n` +
-                        `Klik link di atas untuk melihat lirik lengkap.`,
-                    edit: processingMsg.key
-                });
-                return;
-            }
+            // Format the lyrics
+            const displayTitle = `${lyricsData.artist} - ${lyricsData.title}`;
+            const header = `Lyrics ${displayTitle}`;
 
-            // Update status
-            await sock.sendMessage(chatId, {
-                text: `✅ *Lirik Ditemukan!*\n\n` +
-                    `Sumber: ${lyricsData.source}\n` +
-                    `⏳ *Menyusun lirik...*`,
-                edit: processingMsg.key
-            });
+            // Clean the lyrics text
+            const cleanLyrics = cleanText(lyricsData.lyrics);
 
-            // Clean and format lyrics
-            let lyrics = lyricsData.lyrics
-                .replace(/\r\n/g, '\n')
-                .replace(/\n{3,}/g, '\n\n')
-                .trim();
-
-            // Add header to lyrics
-            const fullTitle = lyricsData.title || `${artist || ''} ${title}`.trim();
-            const header = `🎵 *${fullTitle}*\n` +
-                `${lyricsData.artist ? `👤 ${lyricsData.artist}\n` : ''}` +
-                `📝 Sumber: ${lyricsData.source}\n\n`;
-
-            const fullLyrics = header + lyrics + `\n\n_Semoga membantu! 🎶_`;
+            // Combine header and lyrics
+            const fullLyrics = header + '\n\n' + cleanLyrics;
 
             // Split lyrics if too long
-            const chunks = splitLyrics(fullLyrics, fullTitle);
-
-            // Delete processing message
-            await sock.deleteMessage(chatId, processingMsg.key);
+            const chunks = splitLyrics(fullLyrics);
 
             // Send lyrics in chunks
             for (let i = 0; i < chunks.length; i++) {
@@ -356,30 +380,24 @@ async function lyricsCommand(sock, chatId, songTitle, message) {
                     });
                 }
 
-                // Add delay between messages to avoid rate limiting
+                // Add small delay between messages
                 if (i < chunks.length - 1) {
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    await new Promise(resolve => setTimeout(resolve, 500));
                 }
-            }
-
-            // Send completion message if lyrics were split
-            if (chunks.length > 1) {
-                await sock.sendMessage(chatId, {
-                    text: `📄 *Lirik lengkap terkirim!*\n\n` +
-                        `Total ${chunks.length} bagian.\n` +
-                        `Selamat bernyanyi! 🎤`
-                });
             }
 
         } catch (error) {
             console.error('Lyrics processing error:', error);
 
             await sock.sendMessage(chatId, {
-                text: `❌ *Terjadi Kesalahan!*\n\n` +
-                    `Gagal memproses permintaan lirik.\n\n` +
-                    `Error: ${error.message || 'Unknown'}\n\n` +
-                    `Coba lagi nanti atau gunakan judul yang berbeda.`,
-                edit: processingMsg.key
+                text: `Terjadi Kesalahan
+
+Gagal memproses permintaan lirik.
+
+Error: ${error.message || 'Tidak diketahui'}
+
+Coba format: "Judul - Artis"
+Contoh: .lyrics faded - alan walker`
             });
         }
 
@@ -387,106 +405,70 @@ async function lyricsCommand(sock, chatId, songTitle, message) {
         console.error('Error in lyrics command:', error);
 
         await sock.sendMessage(chatId, {
-            text: "❌ *Terjadi Kesalahan Sistem!*\n\n" +
-                "Maaf, terjadi error yang tidak terduga.\n" +
-                "Silakan coba lagi nanti.\n\n" +
-                "Error: " + (error.message || "Unknown")
+            text: `Error Sistem
+
+Maaf, terjadi error.
+Silakan coba lagi nanti.
+
+Error: ${error.message || "Tidak diketahui"}`
         }, { quoted: message });
     }
 }
 
-// Quick lyrics search (simple version)
+// Quick lyrics command
 async function quickLyricsCommand(sock, chatId, songTitle, message) {
     try {
         if (!songTitle) {
             return await sock.sendMessage(chatId, {
-                text: '🎵 Cari lirik lagu\n\nGunakan: .lyrics <judul lagu>\nContoh: .lyrics Alan Walker Faded'
+                text: `Cari Lirik Cepat
+
+Gunakan:
+• .lyrics <judul> - <artis>
+
+Contoh:
+• .lyrics faded - alan walker
+• .lyrics shape of you - ed sheeran`
             }, { quoted: message });
         }
 
+        // Send processing message
         await sock.sendMessage(chatId, {
-            react: { text: '🔍', key: message.key }
-        });
-
-        const processingMsg = await sock.sendMessage(chatId, {
-            text: '⏳ Mencari lirik...'
+            text: `Mencari: ${songTitle}...`
         }, { quoted: message });
 
-        // Try lyrics.ovh API first (most reliable)
-        try {
-            const parsed = parseSongQuery(songTitle);
-            const artist = parsed.artist;
-            const title = parsed.title;
+        // Parse the query
+        const parsed = parseSongQuery(songTitle);
+        const artist = parsed.artist;
+        const title = parsed.title;
 
-            let apiUrl;
-            if (artist) {
-                apiUrl = `https://api.lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(title)}`;
-            } else {
-                apiUrl = `https://api.lyrics.ovh/v1/${encodeURIComponent(title)}`;
-            }
+        // Try to get lyrics
+        const lyricsData = await getLyrics(artist, title);
 
-            const response = await axios.get(apiUrl, { timeout: 10000 });
-            const data = response.data;
+        if (!lyricsData.success) {
+            await sock.sendMessage(chatId, {
+                text: `Tidak ditemukan
 
-            if (data.lyrics) {
-                const lyrics = data.lyrics.substring(0, 4000);
-                const displayTitle = artist ? `${artist} - ${title}` : title;
+"${songTitle}" tidak ditemukan.
 
-                await sock.sendMessage(chatId, {
-                    text: `🎵 *${displayTitle}*\n\n${lyrics}\n\n_Semoga membantu! 🎶_`
-                }, { quoted: message });
-
-                await sock.deleteMessage(chatId, processingMsg.key);
-                await sock.sendMessage(chatId, {
-                    react: { text: '✅', key: message.key }
-                });
-
-                return;
-            }
-        } catch (apiError) {
-            console.log('lyrics.ovh failed, trying alternative...');
-        }
-
-        // Try some-random-api as fallback
-        try {
-            const response = await axios.get(`https://some-random-api.com/lyrics?title=${encodeURIComponent(songTitle)}`, {
-                timeout: 10000
+Gunakan format: Judul - Artis
+Contoh: faded - alan walker`
             });
-
-            const data = response.data;
-
-            if (data.lyrics) {
-                const lyrics = data.lyrics.substring(0, 4000);
-                const title = data.title || songTitle;
-
-                await sock.sendMessage(chatId, {
-                    text: `🎵 *${title}*\n\n${lyrics}\n\n_Semoga membantu! 🎶_`
-                }, { quoted: message });
-
-                await sock.deleteMessage(chatId, processingMsg.key);
-                await sock.sendMessage(chatId, {
-                    react: { text: '✅', key: message.key }
-                });
-
-                return;
-            }
-        } catch (error) {
-            console.log('some-random-api failed');
+            return;
         }
 
-        await sock.sendMessage(chatId, {
-            text: `❌ Lirik untuk "${songTitle}" tidak ditemukan.\nCoba judul lain atau sertakan nama artis.`,
-            edit: processingMsg.key
-        });
+        // Format and send lyrics
+        const displayTitle = `${lyricsData.artist} - ${lyricsData.title}`;
+        const lyrics = cleanText(lyricsData.lyrics);
+        const formattedLyrics = `Lyrics ${displayTitle}\n\n${lyrics}`;
 
         await sock.sendMessage(chatId, {
-            react: { text: '❌', key: message.key }
-        });
+            text: formattedLyrics
+        }, { quoted: message });
 
     } catch (error) {
         console.error('Quick lyrics error:', error);
         await sock.sendMessage(chatId, {
-            text: '❌ Gagal mencari lirik! Coba lagi nanti.'
+            text: 'Gagal mencari lirik. Gunakan format: Judul - Artis'
         }, { quoted: message });
     }
 }
