@@ -58,6 +58,12 @@ sudo apt install ffmpeg -y
 brew install ffmpeg
 ```
 
+#### Install yt-dlp for linux
+```bash
+sudo apt install python3 python3-pip
+pip3 install yt-dlp
+```
+
 ### Langkah 4: Konfigurasi Environment
 
 Salin file environment contoh:
