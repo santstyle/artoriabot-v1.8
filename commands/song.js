@@ -358,10 +358,7 @@ async function songCommand(sock, chatId, message) {
 
         if (!searchQuery) {
             return await sock.sendMessage(chatId, {
-                text: `*Music Downloader*\n\n` +
-                    `Gunakan: .song <judul lagu>\n` +
-                    `Contoh: .song unity alan walker\n` +
-                    `Atau: .song https://youtube.com/watch?v=...`
+                text: 'Mencari Lagu\n\n\`.song <judul lagu>\`'
             }, { quoted: message });
         }
 
