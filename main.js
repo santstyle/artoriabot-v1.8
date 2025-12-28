@@ -66,7 +66,7 @@ const staffCommand = require('./commands/staff');
 const broadcastCommand = require('./commands/broadcast');
 const instagramCommand = require('./commands/instagram');
 const { facebook: facebookCommand } = require('./commands/facebook');
-const playCommand = require('./commands/play');
+const { play: playCommand } = require('./commands/play');
 const { tiktok: tiktokCommand } = require('./commands/tiktok');
 const { song: songCommand } = require('./commands/song');
 const { pinterest } = require('./commands/pinterest');
@@ -605,7 +605,10 @@ async function handleMessages(sock, messageUpdate, printLog) {
             case userMessage.startsWith('.music'):
                 await playCommand(sock, chatId, message);
                 break;
-            case userMessage.startsWith('.play') || userMessage.startsWith('.mp3') || userMessage.startsWith('.ytmp3') || userMessage.startsWith('.song'):
+            case userMessage.startsWith('.play') || userMessage.startsWith('.mp3') || userMessage.startsWith('.ytmp3'):
+                await playCommand(sock, chatId, message);
+                break;
+            case userMessage.startsWith('.song'):
                 await songCommand(sock, chatId, message);
                 break;
             case userMessage.startsWith('.video') || userMessage.startsWith('.youtube') || userMessage.startsWith('.yt'):
