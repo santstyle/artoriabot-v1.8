@@ -65,9 +65,9 @@ const resetlinkCommand = require('./commands/resetlink');
 const staffCommand = require('./commands/staff');
 const broadcastCommand = require('./commands/broadcast');
 const instagramCommand = require('./commands/instagram');
-const facebookCommand = require('./commands/facebook');
+const { facebook: facebookCommand } = require('./commands/facebook');
 const playCommand = require('./commands/play');
-const tiktokCommand = require('./commands/tiktok');
+const { tiktok: tiktokCommand } = require('./commands/tiktok');
 const { song: songCommand } = require('./commands/song');
 const { pinterest } = require('./commands/pinterest');
 const { twitter } = require('./commands/twitter');
@@ -613,6 +613,12 @@ async function handleMessages(sock, messageUpdate, printLog) {
                 break;
             case userMessage.startsWith('.tiktok') || userMessage.startsWith('.tt'):
                 await tiktokCommand(sock, chatId, message);
+                break;
+            case userMessage.startsWith('.twitter'):
+                await twitter(sock, chatId, message, '.twitter');
+                break;
+            case userMessage.startsWith('.twt'):
+                await twitter(sock, chatId, message, '.twt');
                 break;
             case userMessage.startsWith('.gpt') || userMessage.startsWith('.gemini'):
                 await aiCommand(sock, chatId, message);
