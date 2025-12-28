@@ -4,100 +4,41 @@ const fs = require('fs');
 const path = require('path');
 const { exec } = require('child_process');
 const util = require('util');
+
 const execPromise = util.promisify(exec);
 
-// List of reliable audio download APIs
+// API yang lebih stabil
 const songApis = [
     {
-        name: "SaveTube",
-        url: "https://apis-keith.vercel.app/download/dlmp3",
+        name: "Y2Mate",
+        url: "https://youtube-mp36.p.rapidapi.com/dl",
         method: "GET",
-        parse: (data) => data.result?.downloadUrl,
-        getTitle: (data) => data.result?.title,
-        getArtist: (data) => data.result?.artist || "Unknown Artist"
-    },
-    {
-        name: "Akuari",
-        url: "https://api.akuari.my.id/downloader/youtube",
-        method: "GET",
-        parse: (data) => data.hasil?.audio,
-        getTitle: (data) => data.hasil?.title,
-        getArtist: (data) => data.hasil?.author || "Unknown Artist"
-    },
-    {
-        name: "Siputzx",
-        url: "https://api.siputzx.my.id/api/download/ytmp3",
-        method: "GET",
-        parse: (data) => data.result?.audio,
-        getTitle: (data) => data.result?.title,
-        getArtist: (data) => data.result?.artist || "Unknown Artist"
-    },
-    {
-        name: "Dreaded",
-        url: "https://api.dreaded.site/api/youtube-mp3",
-        method: "GET",
-        parse: (data) => data.audio,
+        params: (id) => ({ id: id }),
+        parse: (data) => data.link,
         getTitle: (data) => data.title,
-        getArtist: (data) => data.artist || "Unknown Artist"
+        getArtist: (data) => data.author || "Unknown Artist",
+        useRapidAPI: true
     },
     {
-        name: "DL-Lagu",
-        url: "https://api.download-lagu.net/download",
-        method: "GET",
-        parse: (data) => data.url,
+        name: "Loader",
+        url: "https://loader.to/api/convert",
+        method: "POST",
+        params: (url) => ({
+            url: url,
+            format: "mp3",
+            bitrate: "128"
+        }),
+        parse: (data) => data.download_url,
         getTitle: (data) => data.title,
-        getArtist: (data) => data.artist || "Unknown Artist"
-    },
-    {
-        name: "Rentry",
-        url: "https://api.rentry.co/api/youtube-mp3",
-        method: "GET",
-        parse: (data) => data.url,
-        getTitle: (data) => data.title,
-        getArtist: (data) => data.author || "Unknown Artist"
+        getArtist: (data) => "YouTube Audio"
     }
 ];
 
-// Get song info from APIs with fallback
-async function getSongFromAPI(youtubeUrl, apiIndex = 0) {
-    if (apiIndex >= songApis.length) {
-        return { success: false, error: "Semua API gagal" };
-    }
-
-    const api = songApis[apiIndex];
-
-    try {
-        console.log(`Mencoba API ${api.name}...`);
-
-        const response = await axios.get(`${api.url}?url=${encodeURIComponent(youtubeUrl)}`, {
-            timeout: 15000,
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Accept': 'application/json'
-            }
-        });
-
-        const data = response.data;
-        const audioUrl = api.parse(data);
-
-        if (audioUrl) {
-            return {
-                success: true,
-                url: audioUrl,
-                title: api.getTitle(data) || 'Unknown Song',
-                artist: api.getArtist(data),
-                duration: data.duration || data.result?.duration,
-                quality: data.quality || '128kbps',
-                api: api.name
-            };
-        } else {
-            console.log(`API ${api.name} tidak mengembalikan audio URL`);
-            return await getSongFromAPI(youtubeUrl, apiIndex + 1);
-        }
-    } catch (error) {
-        console.log(`API ${api.name} gagal:`, error.message);
-        return await getSongFromAPI(youtubeUrl, apiIndex + 1);
-    }
+// Extract YouTube ID
+function extractYouTubeId(url) {
+    const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
 }
 
 // Get YouTube video info
@@ -105,23 +46,25 @@ async function getYouTubeInfo(query) {
     try {
         // Check if it's already a YouTube URL
         if (query.match(/(youtube\.com|youtu\.be)/i)) {
-            const videoUrl = query;
-            const { videos } = await yts(videoUrl);
+            const videoId = extractYouTubeId(query);
+            const searchResult = await yts({ videoId });
 
-            if (videos && videos.length > 0) {
+            if (searchResult.videos && searchResult.videos.length > 0) {
+                const video = searchResult.videos[0];
                 return {
-                    url: videos[0].url,
-                    title: videos[0].title,
-                    artist: videos[0].author?.name || 'Unknown Artist',
-                    duration: videos[0].seconds,
-                    thumbnail: videos[0].thumbnail,
-                    views: videos[0].views
+                    url: video.url,
+                    id: videoId,
+                    title: video.title,
+                    artist: video.author?.name || 'Unknown Artist',
+                    duration: video.seconds,
+                    thumbnail: video.thumbnail,
+                    views: video.views
                 };
             }
 
-            // If direct URL search fails, use the URL directly
             return {
-                url: videoUrl,
+                url: query,
+                id: videoId,
                 title: 'YouTube Audio',
                 artist: 'Unknown Artist',
                 duration: null,
@@ -132,38 +75,248 @@ async function getYouTubeInfo(query) {
             const { videos } = await yts(query);
 
             if (!videos || videos.length === 0) {
-                throw new Error('Song not found on YouTube');
+                throw new Error('Lagu tidak ditemukan di YouTube');
             }
 
+            // Pilih video terbaik
             const video = videos[0];
 
-            // Check if it's a music video (prefer shorter videos for songs)
-            const preferredVideos = videos.filter(v => v.seconds <= 600); // Prefer videos under 10 minutes
-
-            const selectedVideo = preferredVideos.length > 0 ? preferredVideos[0] : video;
-
             return {
-                url: selectedVideo.url,
-                title: selectedVideo.title,
-                artist: selectedVideo.author?.name || 'Unknown Artist',
-                duration: selectedVideo.seconds,
-                thumbnail: selectedVideo.thumbnail,
-                views: selectedVideo.views,
-                timestamp: selectedVideo.timestamp
+                url: video.url,
+                id: extractYouTubeId(video.url),
+                title: video.title,
+                artist: video.author?.name || 'Unknown Artist',
+                duration: video.seconds,
+                thumbnail: video.thumbnail,
+                views: video.views
             };
         }
     } catch (error) {
-        throw new Error(`Failed to get YouTube info: ${error.message}`);
+        throw new Error(`Gagal mendapatkan info: ${error.message}`);
     }
 }
 
-// Clean filename for safe saving
+// Get audio URL dengan metode lokal (yt-dlp)
+async function getAudioWithYtDlp(youtubeUrl, title) {
+    try {
+        const tempDir = path.join(__dirname, '../temp');
+        if (!fs.existsSync(tempDir)) {
+            fs.mkdirSync(tempDir, { recursive: true });
+        }
+
+        const timestamp = Date.now();
+        const outputFile = path.join(tempDir, `audio_${timestamp}.mp3`);
+
+        // Cek apakah yt-dlp tersedia
+        try {
+            await execPromise('yt-dlp --version');
+        } catch (e) {
+            console.log('yt-dlp tidak ditemukan, mencoba install...');
+            try {
+                await execPromise('pip install yt-dlp');
+            } catch (installError) {
+                console.log('Gagal install yt-dlp:', installError.message);
+                return null;
+            }
+        }
+
+        // Download audio dengan yt-dlp
+        console.log('Mendownload dengan yt-dlp...');
+        const command = `yt-dlp -x --audio-format mp3 --audio-quality 128K -o "${outputFile}" "${youtubeUrl}"`;
+
+        try {
+            await execPromise(command, { timeout: 180000 });
+
+            if (fs.existsSync(outputFile)) {
+                const stats = fs.statSync(outputFile);
+                if (stats.size > 0) {
+                    return {
+                        success: true,
+                        filePath: outputFile,
+                        title: title,
+                        api: 'yt-dlp'
+                    };
+                }
+            }
+        } catch (error) {
+            console.log('yt-dlp error:', error.message);
+            // Hapus file jika gagal
+            if (fs.existsSync(outputFile)) {
+                fs.unlinkSync(outputFile);
+            }
+        }
+
+        return null;
+    } catch (error) {
+        console.log('yt-dlp process error:', error.message);
+        return null;
+    }
+}
+
+// Get audio URL dengan API online
+async function getAudioUrl(videoInfo) {
+    // Coba metode lokal pertama
+    const localResult = await getAudioWithYtDlp(videoInfo.url, videoInfo.title);
+    if (localResult) {
+        return localResult;
+    }
+
+    // Jika lokal gagal, coba API online
+    const onlineApis = [
+        // API 1: y2mate alternative
+        async () => {
+            try {
+                console.log('Mencoba API y2mate...');
+                const response = await axios.get('https://yt-api.p.rapidapi.com/dl', {
+                    params: { id: videoInfo.id },
+                    headers: {
+                        'X-RapidAPI-Key': 'c8b1830fd8msh3b4c6c8c9c9c9c9p1c9c9cjsn4c8c9c9c9c9c',
+                        'X-RapidAPI-Host': 'yt-api.p.rapidapi.com'
+                    },
+                    timeout: 15000
+                });
+
+                if (response.data && response.data.link) {
+                    return {
+                        success: true,
+                        url: response.data.link,
+                        title: response.data.title || videoInfo.title,
+                        api: 'y2mate'
+                    };
+                }
+            } catch (e) {
+                console.log('API y2mate gagal:', e.message);
+                return null;
+            }
+        },
+
+        // API 2: loader.to
+        async () => {
+            try {
+                console.log('Mencoba API loader.to...');
+                const response = await axios.post('https://loader.to/ajax/download.php',
+                    `url=${encodeURIComponent(videoInfo.url)}&format=mp3`,
+                    {
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                        },
+                        timeout: 15000
+                    }
+                );
+
+                if (response.data && response.data.download_url) {
+                    return {
+                        success: true,
+                        url: response.data.download_url,
+                        title: videoInfo.title,
+                        api: 'loader.to'
+                    };
+                }
+            } catch (e) {
+                console.log('API loader.to gagal:', e.message);
+                return null;
+            }
+        },
+
+        // API 3: mp3-convert.org
+        async () => {
+            try {
+                console.log('Mencoba API mp3-convert...');
+                const response = await axios.get('https://mp3-convert.org/api/convert', {
+                    params: {
+                        url: videoInfo.url,
+                        format: 'mp3'
+                    },
+                    timeout: 15000
+                });
+
+                if (response.data && response.data.url) {
+                    return {
+                        success: true,
+                        url: response.data.url,
+                        title: videoInfo.title,
+                        api: 'mp3-convert'
+                    };
+                }
+            } catch (e) {
+                console.log('API mp3-convert gagal:', e.message);
+                return null;
+            }
+        },
+
+        // API 4: yt5s (bekerja langsung dengan YouTube)
+        async () => {
+            try {
+                console.log('Mencoba metode yt5s...');
+                // Step 1: Get video info
+                const infoResponse = await axios.post('https://yt5s.com/api/ajaxSearch/index',
+                    `q=${encodeURIComponent(videoInfo.url)}&vt=mp3`,
+                    {
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                        },
+                        timeout: 15000
+                    }
+                );
+
+                if (infoResponse.data && infoResponse.data.vid) {
+                    // Step 2: Convert to MP3
+                    const convertResponse = await axios.post('https://yt5s.com/api/ajaxConvert/convert',
+                        `vid=${infoResponse.data.vid}&k=${infoResponse.data.links.mp3['128']?.k || infoResponse.data.links.mp3['320']?.k}`,
+                        {
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                            },
+                            timeout: 15000
+                        }
+                    );
+
+                    if (convertResponse.data && convertResponse.data.dlink) {
+                        return {
+                            success: true,
+                            url: convertResponse.data.dlink,
+                            title: infoResponse.data.title || videoInfo.title,
+                            api: 'yt5s'
+                        };
+                    }
+                }
+            } catch (e) {
+                console.log('Metode yt5s gagal:', e.message);
+                return null;
+            }
+        }
+    ];
+
+    // Coba semua API
+    for (let i = 0; i < onlineApis.length; i++) {
+        try {
+            const result = await onlineApis[i]();
+            if (result) {
+                console.log(`Berhasil dengan API: ${result.api}`);
+                return result;
+            }
+        } catch (error) {
+            console.log(`API ${i + 1} error:`, error.message);
+            continue;
+        }
+    }
+
+    return {
+        success: false,
+        error: "Semua metode download gagal"
+    };
+}
+
+// Clean filename
 function cleanFileName(text) {
     return text
         .replace(/[<>:"/\\|?*]/g, '')
         .replace(/\s+/g, ' ')
         .trim()
-        .substring(0, 100);
+        .substring(0, 50);
 }
 
 // Format duration
@@ -176,32 +329,25 @@ function formatDuration(seconds) {
     return `${minutes}:${secs.toString().padStart(2, '0')}`;
 }
 
-// Download file locally (fallback method)
-async function downloadFile(url, outputPath) {
-    return new Promise((resolve, reject) => {
-        axios({
-            method: 'GET',
-            url: url,
-            responseType: 'stream',
-            timeout: 300000,
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Referer': 'https://www.youtube.com/'
-            }
-        })
-            .then(response => {
-                const writer = fs.createWriteStream(outputPath);
-                response.data.pipe(writer);
-
-                writer.on('finish', resolve);
-                writer.on('error', reject);
-                response.data.on('error', reject);
-            })
-            .catch(reject);
-    });
+// Update pesan tanpa delete
+async function updateMessage(sock, chatId, messageKey, newText) {
+    try {
+        await sock.sendMessage(chatId, {
+            text: newText,
+            edit: messageKey
+        });
+    } catch (error) {
+        // Jika edit gagal, kirim pesan baru
+        console.log('Gagal edit pesan, mengirim pesan baru:', error.message);
+        await sock.sendMessage(chatId, { text: newText });
+    }
 }
 
+// Main song command
 async function songCommand(sock, chatId, message) {
+    let statusMessage = null;
+    let statusKey = null;
+
     try {
         const text = message.message?.conversation ||
             message.message?.extendedTextMessage?.text ||
@@ -212,328 +358,240 @@ async function songCommand(sock, chatId, message) {
 
         if (!searchQuery) {
             return await sock.sendMessage(chatId, {
-                text: `🎵 *Music Downloader*\n\n` +
-                    `*Command:*\n` +
-                    `.song <judul/artis>\n` +
-                    `.music <judul/artis>\n` +
-                    `.play <judul/artis>\n\n` +
-                    `*Contoh:*\n` +
-                    `.song Alan Walker Faded\n` +
-                    `.music Coldplay - Paradise\n` +
-                    `.play https://youtu.be/...\n\n` +
-                    `*Fitur:*\n` +
-                    `• MP3 format\n` +
-                    `• 128-320kbps quality\n` +
-                    `• Auto artist detection\n` +
-                    `• Multiple API backup`
+                text: `*Music Downloader*\n\n` +
+                    `Gunakan: .song <judul lagu>\n` +
+                    `Contoh: .song unity alan walker\n` +
+                    `Atau: .song https://youtube.com/watch?v=...`
             }, { quoted: message });
         }
 
-        // Send processing message
-        const processingMsg = await sock.sendMessage(chatId, {
-            text: `🔍 *Mencari lagu...*\n\n` +
-                `"${searchQuery.substring(0, 50)}${searchQuery.length > 50 ? '...' : ''}"\n\n` +
-                `⏳ Mohon tunggu sebentar...`
-        }, { quoted: message });
+        // Kirim status awal
+        statusMessage = await sock.sendMessage(chatId, {
+            text: `Memproses Audio YouTube\n\nURL: ${searchQuery.includes('youtube.com') || searchQuery.includes('youtu.be') ? searchQuery : 'Mencari: ' + searchQuery}\n\nMulai download...`
+        });
+        statusKey = statusMessage.key;
 
-        try {
-            // Get YouTube video info
-            await sock.sendMessage(chatId, { delete: processingMsg.key });
-            const processingMsg2 = await sock.sendMessage(chatId, {
-                text: `🔍 *Mencari di YouTube...*\n\n` +
-                    `Mencari lagu terbaik...`
-            }, { quoted: message });
+        console.log(`Mencari lagu: ${searchQuery}`);
 
-            const videoInfo = await getYouTubeInfo(searchQuery);
+        // Update status
+        await updateMessage(sock, chatId, statusKey,
+            `Memproses Audio YouTube\n\n` +
+            `URL: ${searchQuery.includes('youtube.com') || searchQuery.includes('youtu.be') ? searchQuery : 'Mencari: ' + searchQuery}\n\n` +
+            `Status: Mencari video di YouTube...`
+        );
 
-            // Check duration (avoid downloading full concerts)
-            if (videoInfo.duration && videoInfo.duration > 1800) { // 30 minutes
-                await sock.sendMessage(chatId, { delete: processingMsg2.key });
-                await sock.sendMessage(chatId, {
-                    text: `⚠️ *Durasi Terlalu Panjang!*\n\n` +
-                        `"${videoInfo.title}"\n\n` +
-                        `⏱️ Durasi: ${formatDuration(videoInfo.duration)}\n` +
-                        `📏 Maksimal: 30 menit\n\n` +
-                        `Ini mungkin bukan lagu single.\n` +
-                        `Coba cari versi yang lebih pendek.`
-                }, { quoted: message });
-                return;
-            }
+        // Dapatkan info video
+        const videoInfo = await getYouTubeInfo(searchQuery);
+        console.log(`Video ditemukan: ${videoInfo.title}`);
 
-            // Show found song info
-            await sock.sendMessage(chatId, { delete: processingMsg2.key });
-            const processingMsg3 = await sock.sendMessage(chatId, {
-                text: `✅ *Lagu Ditemukan!*\n\n` +
-                    `🎵 *${videoInfo.title}*\n` +
-                    `👤 ${videoInfo.artist}\n` +
-                    `⏱️ ${formatDuration(videoInfo.duration)}\n` +
-                    `👁️ ${videoInfo.views ? videoInfo.views.toLocaleString() + ' views' : ''}\n\n` +
-                    `⬇️ *Mencari sumber audio...*`
-            }, { quoted: message });
+        // Update status
+        await updateMessage(sock, chatId, statusKey,
+            `Memproses Audio YouTube\n\n` +
+            `URL: ${videoInfo.url}\n\n` +
+            `Video: ${videoInfo.title}\n` +
+            `Artis: ${videoInfo.artist}\n` +
+            `Durasi: ${formatDuration(videoInfo.duration)}\n\n` +
+            `Status: Mencari sumber audio...`
+        );
 
-            // Send thumbnail if available
-            if (videoInfo.thumbnail) {
-                try {
-                    await sock.sendMessage(chatId, {
-                        image: { url: videoInfo.thumbnail },
-                        caption: `📸 *Album Art*\n\n` +
-                            `${videoInfo.title}\n` +
-                            `by ${videoInfo.artist}\n\n` +
-                            `⬇️ Sedang diproses...`
-                    });
-                } catch (e) {
-                    console.log('Gagal kirim thumbnail:', e.message);
-                }
-            }
+        // Durasi maksimal 15 menit
+        if (videoInfo.duration && videoInfo.duration > 900) {
+            await updateMessage(sock, chatId, statusKey,
+                `Memproses Audio YouTube\n\n` +
+                `URL: ${videoInfo.url}\n\n` +
+                `Error: Video terlalu panjang (${formatDuration(videoInfo.duration)})\n` +
+                `Maksimal: 15 menit\n\n` +
+                `Silakan cari versi yang lebih pendek.`
+            );
+            return;
+        }
 
-            // Get audio from APIs
-            await sock.sendMessage(chatId, { delete: processingMsg3.key });
-            const processingMsg4 = await sock.sendMessage(chatId, {
-                text: `🔄 *Mendownload audio...*\n\n` +
-                    `Mencoba API pertama...`
-            }, { quoted: message });
+        // Dapatkan URL audio
+        await updateMessage(sock, chatId, statusKey,
+            `Memproses Audio YouTube\n\n` +
+            `URL: ${videoInfo.url}\n\n` +
+            `Video: ${videoInfo.title}\n` +
+            `Status: Mendownload audio... (mungkin butuh waktu)`
+        );
 
-            const audioData = await getSongFromAPI(videoInfo.url);
+        const audioData = await getAudioUrl(videoInfo);
 
-            if (!audioData.success) {
-                await sock.sendMessage(chatId, { delete: processingMsg4.key });
-                await sock.sendMessage(chatId, {
-                    text: `❌ *Gagal Mendapatkan Audio!*\n\n` +
-                        `Semua API gagal.\n\n` +
-                        `Coba:\n` +
-                        `1. Judul lagu yang berbeda\n` +
-                        `2. Link YouTube langsung\n` +
-                        `3. Tunggu beberapa menit`
-                }, { quoted: message });
-                return;
-            }
+        if (!audioData.success) {
+            await updateMessage(sock, chatId, statusKey,
+                `Memproses Audio YouTube\n\n` +
+                `URL: ${videoInfo.url}\n\n` +
+                `Error: ${audioData.error}\n\n` +
+                `Coba:\n` +
+                `1. Gunakan link YouTube langsung\n` +
+                `2. Judul yang lebih spesifik\n` +
+                `3. Coba lagi nanti`
+            );
+            return;
+        }
 
-            // Update status
-            await sock.sendMessage(chatId, { delete: processingMsg4.key });
-            const processingMsg5 = await sock.sendMessage(chatId, {
-                text: `📥 *Mendownload dari ${audioData.api}...*\n\n` +
-                    `⏳ Mohon tunggu, ini mungkin butuh waktu...`
-            }, { quoted: message });
+        console.log(`Audio didapatkan dari: ${audioData.api}`);
 
-            // Create temp directory
-            const tempDir = path.join(__dirname, '../temp');
-            if (!fs.existsSync(tempDir)) {
-                fs.mkdirSync(tempDir, { recursive: true });
-            }
-
-            const timestamp = Date.now();
-            const tempFile = path.join(tempDir, `song_${timestamp}.mp3`);
-
+        // Jika audio sudah didownload lokal (yt-dlp)
+        if (audioData.filePath) {
             try {
-                // Download the audio file
-                await downloadFile(audioData.url, tempFile);
-
-                // Check file size
-                const stats = fs.statSync(tempFile);
+                // Kirim audio file
+                const stats = fs.statSync(audioData.filePath);
                 const fileSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
 
-                if (stats.size === 0) {
-                    throw new Error('File kosong (0 bytes)');
-                }
+                await updateMessage(sock, chatId, statusKey,
+                    `Memproses Audio YouTube\n\n` +
+                    `URL: ${videoInfo.url}\n\n` +
+                    `Status: Mengirim audio... (${fileSizeMB} MB)`
+                );
 
-                if (stats.size > 20 * 1024 * 1024) { // 20MB limit
-                    await sock.editMessage(chatId, processingMsg, {
-                        text: `⚠️ *File Terlalu Besar!*\n\n` +
-                            `Ukuran: ${fileSizeMB} MB\n` +
-                            `Maksimal: 20 MB\n\n` +
-                            `Pilih lagu yang lebih pendek.`
-                    });
-
-                    fs.unlinkSync(tempFile);
-                    return;
-                }
-
-                // Update status
-                await sock.sendMessage(chatId, { delete: processingMsg5.key });
                 await sock.sendMessage(chatId, {
-                    text: `✅ *Audio Siap!*\n\n` +
-                        `Ukuran: ${fileSizeMB} MB\n` +
-                        `Kualitas: ${audioData.quality}\n` +
-                        `⏳ *Mengirim ke WhatsApp...*`
-                }, { quoted: message });
-
-                // Send the audio file
-                await sock.sendMessage(chatId, {
-                    audio: fs.readFileSync(tempFile),
+                    audio: fs.readFileSync(audioData.filePath),
                     mimetype: "audio/mpeg",
-                    fileName: `${cleanFileName(audioData.title)}.mp3`,
-                    caption: `✅ *Download Berhasil!*\n\n` +
-                        `🎵 *${audioData.title}*\n` +
-                        `👤 ${audioData.artist}\n` +
-                        `⏱️ ${formatDuration(audioData.duration || videoInfo.duration)}\n` +
-                        `📦 ${fileSizeMB} MB\n` +
-                        `🔧 ${audioData.api}\n` +
-                        `🎧 ${audioData.quality}\n\n` +
-                        `_Downloaded via Music Bot_ 🎶`
+                    fileName: `${cleanFileName(videoInfo.title)}.mp3`,
+                    caption: `✅ ${videoInfo.title}\n👤 ${videoInfo.artist}\n⏱️ ${formatDuration(videoInfo.duration)}\n📦 ${fileSizeMB} MB\n🔧 ${audioData.api}`
                 });
 
-                // Delete processing message
-                await sock.deleteMessage(chatId, processingMsg.key);
+                // Update status akhir
+                await updateMessage(sock, chatId, statusKey,
+                    `Memproses Audio YouTube\n\n` +
+                    `URL: ${videoInfo.url}\n\n` +
+                    `Status: ✅ Audio berhasil dikirim!\n\n` +
+                    `Judul: ${videoInfo.title}\n` +
+                    `Artis: ${videoInfo.artist}\n` +
+                    `Ukuran: ${fileSizeMB} MB\n` +
+                    `Metode: ${audioData.api}`
+                );
 
-                // Send success message
-                await sock.sendMessage(chatId, {
-                    text: `🎉 *Download Selesai!*\n\n` +
-                        `Lagu berhasil didownload!\n\n` +
-                        `Ingin download lagu lain?\n` +
-                        `Ketik: \`.song <judul lagu>\``
-                });
-
-            } catch (downloadError) {
-                console.error('Download error:', downloadError);
-
-                await sock.sendMessage(chatId, { delete: processingMsg5.key });
-                await sock.sendMessage(chatId, {
-                    text: `❌ *Gagal Download File!*\n\n` +
-                        `Error: ${downloadError.message}\n\n` +
-                        `Coba lagi nanti atau gunakan judul berbeda.`
-                }, { quoted: message });
-            } finally {
-                // Clean up temp file
+                // Cleanup
                 setTimeout(() => {
-                    try {
-                        if (fs.existsSync(tempFile)) {
-                            fs.unlinkSync(tempFile);
-                            console.log('Temp file cleaned');
-                        }
-                    } catch (e) {
-                        console.error('Gagal hapus temp file:', e.message);
+                    if (fs.existsSync(audioData.filePath)) {
+                        fs.unlinkSync(audioData.filePath);
                     }
-                }, 10000);
-            }
-        } catch (infoError) {
-            console.error('Info error:', infoError);
+                }, 5000);
 
-            await sock.sendMessage(chatId, { delete: processingMsg.key });
+            } catch (error) {
+                await updateMessage(sock, chatId, statusKey,
+                    `Memproses Audio YouTube\n\n` +
+                    `URL: ${videoInfo.url}\n\n` +
+                    `Error: Gagal mengirim audio\n` +
+                    `Detail: ${error.message}`
+                );
+                if (audioData.filePath && fs.existsSync(audioData.filePath)) {
+                    fs.unlinkSync(audioData.filePath);
+                }
+            }
+            return;
+        }
+
+        // Jika dapat URL audio (API online)
+        await updateMessage(sock, chatId, statusKey,
+            `Memproses Audio YouTube\n\n` +
+            `URL: ${videoInfo.url}\n\n` +
+            `Status: Mendownload dari ${audioData.api}...`
+        );
+
+        // Download audio dari URL
+        const tempDir = path.join(__dirname, '../temp');
+        if (!fs.existsSync(tempDir)) {
+            fs.mkdirSync(tempDir, { recursive: true });
+        }
+
+        const timestamp = Date.now();
+        const tempFile = path.join(tempDir, `audio_${timestamp}.mp3`);
+
+        try {
+            const response = await axios({
+                method: 'GET',
+                url: audioData.url,
+                responseType: 'stream',
+                timeout: 120000,
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                }
+            });
+
+            const writer = fs.createWriteStream(tempFile);
+            response.data.pipe(writer);
+
+            await new Promise((resolve, reject) => {
+                writer.on('finish', resolve);
+                writer.on('error', reject);
+                response.data.on('error', reject);
+            });
+
+            // Kirim audio
+            const stats = fs.statSync(tempFile);
+            const fileSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
+
+            await updateMessage(sock, chatId, statusKey,
+                `Memproses Audio YouTube\n\n` +
+                `URL: ${videoInfo.url}\n\n` +
+                `Status: Mengirim audio... (${fileSizeMB} MB)`
+            );
+
             await sock.sendMessage(chatId, {
-                text: `❌ *Gagal Mencari Lagu!*\n\n` +
-                    `"${searchQuery}" tidak ditemukan.\n\n` +
-                    `Coba:\n` +
-                    `1. Periksa penulisan judul\n` +
-                    `2. Tambahkan nama artis\n` +
-                    `3. Gunakan link YouTube langsung`
-            }, { quoted: message });
+                audio: fs.readFileSync(tempFile),
+                mimetype: "audio/mpeg",
+                fileName: `${cleanFileName(videoInfo.title)}.mp3`,
+                caption: `✅ ${videoInfo.title}\n👤 ${videoInfo.artist}\n⏱️ ${formatDuration(videoInfo.duration)}\n📦 ${fileSizeMB} MB\n🔧 ${audioData.api}`
+            });
+
+            // Update status akhir
+            await updateMessage(sock, chatId, statusKey,
+                `Memproses Audio YouTube\n\n` +
+                `URL: ${videoInfo.url}\n\n` +
+                `Status: ✅ Audio berhasil dikirim!\n\n` +
+                `Judul: ${videoInfo.title}\n` +
+                `Artis: ${videoInfo.artist}\n` +
+                `Ukuran: ${fileSizeMB} MB\n` +
+                `Metode: ${audioData.api}`
+            );
+
+            // Cleanup
+            setTimeout(() => {
+                if (fs.existsSync(tempFile)) {
+                    fs.unlinkSync(tempFile);
+                }
+            }, 5000);
+
+        } catch (downloadError) {
+            await updateMessage(sock, chatId, statusKey,
+                `Memproses Audio YouTube\n\n` +
+                `URL: ${videoInfo.url}\n\n` +
+                `Error: Gagal download audio\n` +
+                `Detail: ${downloadError.message}`
+            );
+            if (fs.existsSync(tempFile)) {
+                fs.unlinkSync(tempFile);
+            }
         }
 
     } catch (error) {
         console.error("[SONG ERROR]:", error);
 
-        await sock.sendMessage(chatId, {
-            text: "❌ *Terjadi Kesalahan Sistem!*\n\n" +
-                "Maaf, terjadi error yang tidak terduga.\n" +
-                "Silakan coba lagi nanti.\n\n" +
-                "Error: " + (error.message || "Unknown")
-        }, { quoted: message });
-    }
-}
-
-// Quick and simple version for small bots
-async function songSimpleCommand(sock, chatId, message) {
-    try {
-        const text = message.message?.conversation ||
-            message.message?.extendedTextMessage?.text || '';
-
-        const searchQuery = text.split(' ').slice(1).join(' ').trim();
-
-        if (!searchQuery) {
-            return await sock.sendMessage(chatId, {
-                text: '🎵 *Song Downloader*\n\n' +
-                    'Gunakan: .song <judul lagu>\n' +
-                    'Contoh: .song Alan Walker Faded\n\n' +
-                    'Atau link YouTube: .song https://youtu.be/...'
+        if (statusKey) {
+            await updateMessage(sock, chatId, statusKey,
+                `Memproses Audio YouTube\n\n` +
+                `Error: ${error.message || 'Terjadi kesalahan'}\n\n` +
+                `Silakan coba:\n` +
+                `1. .song "judul lagu artis"\n` +
+                `2. Link YouTube langsung\n` +
+                `3. Tunggu beberapa saat`
+            );
+        } else {
+            await sock.sendMessage(chatId, {
+                text: `Error: ${error.message || 'Terjadi kesalahan'}\n\nSilakan coba lagi.`
             }, { quoted: message });
         }
-
-        // Send initial message
-        const processingMsg = await sock.sendMessage(chatId, {
-            text: '⏳ Mencari lagu...'
-        }, { quoted: message });
-
-        let youtubeUrl;
-        let videoTitle;
-        let artistName;
-
-        // Check if input is a URL
-        if (searchQuery.includes('youtube.com') || searchQuery.includes('youtu.be')) {
-            youtubeUrl = searchQuery;
-            videoTitle = 'YouTube Audio';
-            artistName = 'Unknown Artist';
-        } else {
-            // Search on YouTube
-            const { videos } = await yts(searchQuery);
-            if (!videos || videos.length === 0) {
-                await sock.editMessage(chatId, processingMsg, {
-                    text: '❌ Lagu tidak ditemukan!'
-                });
-                return;
-            }
-
-            const video = videos[0];
-            youtubeUrl = video.url;
-            videoTitle = video.title;
-            artistName = video.author?.name || 'Unknown Artist';
-
-            await sock.editMessage(chatId, processingMsg, {
-                text: `✅ ${videoTitle}\nby ${artistName}\n⬇️ Mendownload...`
-            });
-        }
-
-        // Try multiple APIs quickly
-        const apis = [
-            `https://api.akuari.my.id/downloader/youtube?url=${encodeURIComponent(youtubeUrl)}`,
-            `https://api.siputzx.my.id/api/download/ytmp3?url=${encodeURIComponent(youtubeUrl)}`,
-            `https://apis-keith.vercel.app/download/dlmp3?url=${encodeURIComponent(youtubeUrl)}`
-        ];
-
-        for (const apiUrl of apis) {
-            try {
-                const response = await axios.get(apiUrl, { timeout: 10000 });
-                const data = response.data;
-
-                let audioUrl = null;
-
-                if (data?.hasil?.audio) {
-                    audioUrl = data.hasil.audio;
-                } else if (data?.result?.downloadUrl) {
-                    audioUrl = data.result.downloadUrl;
-                } else if (data?.result?.audio) {
-                    audioUrl = data.result.audio;
-                }
-
-                if (audioUrl) {
-                    await sock.sendMessage(chatId, {
-                        audio: { url: audioUrl },
-                        mimetype: "audio/mpeg",
-                        fileName: `${videoTitle.replace(/[^\w\s.-]/gi, '')}.mp3`,
-                        caption: `✅ ${videoTitle}\nby ${artistName}`
-                    });
-
-                    await sock.deleteMessage(chatId, processingMsg.key);
-                    return;
-                }
-            } catch (e) {
-                continue;
-            }
-        }
-
-        // If all APIs fail
-        await sock.editMessage(chatId, processingMsg, {
-            text: '❌ Gagal download audio! Coba lagi.'
-        });
-
-    } catch (error) {
-        console.error('Simple song error:', error);
-        await sock.sendMessage(chatId, {
-            text: '❌ Error! Coba lagi nanti.'
-        }, { quoted: message });
     }
 }
 
-// Export both versions
+// Simple version
+async function songSimpleCommand(sock, chatId, message) {
+    return await songCommand(sock, chatId, message);
+}
+
+// Export
 module.exports = {
     song: songCommand,
     music: songCommand,

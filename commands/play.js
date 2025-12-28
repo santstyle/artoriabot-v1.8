@@ -24,7 +24,7 @@ async function playCommand(sock, chatId, message, command) {
 
         if (!url) {
             return await sock.sendMessage(chatId, {
-                text: 'Download Audio YouTube\n\n.play <link youtube>\n.song <link youtube>\n.music <link youtube>\n\nContoh\n.play https://youtu.be/dQw4w9WgXcQ'
+                text: 'Download Audio YouTube\n\n\`.play <link youtube>\`'
             }, { quoted: message });
         }
 
@@ -53,7 +53,7 @@ async function playCommand(sock, chatId, message, command) {
         const videoId = getVideoId(url);
         if (!videoId) {
             await sock.sendMessage(chatId, {
-                text: 'Link YouTube tidak valid\n\nContoh: .play https://youtu.be/dQw4w9WgXcQ'
+                text: 'Link YouTube tidak valid\n\nContoh: .play <url youtube>'
             });
             return;
         }
