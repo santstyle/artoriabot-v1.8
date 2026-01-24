@@ -9,7 +9,6 @@ async function aliveCommand(sock, chatId, message) {
         }, { quoted: message });
     } catch (error) {
         console.error('Error di alive command:', error);
-        // Default error message yang imut
         const errorMessage = 'Aduh, ada yang error nih. Tapi jangan khawatir, aku masih hidup kok~';
         await sock.sendMessage(chatId, {
             text: errorMessage

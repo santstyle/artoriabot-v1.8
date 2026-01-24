@@ -5,24 +5,19 @@ const axios = require('axios');
 const USER_GROUP_DATA = path.join(__dirname, '../data/userGroupData.json');
 const CHATBOT_CONFIG = path.join(__dirname, '../data/chatbotConfig.json');
 
-// ====================== KONFIGURASI API ======================
-// PASTIKAN API KEY DISIMPAN DI FILE .env ATAU ENVIRONMENT VARIABLE
 const API_CONFIGS = {
-    // Pilihan 1: DEEPSEEK (GRATIS - rekomendasi)
     DEEPSEEK: {
         url: 'https://api.deepseek.com/chat/completions',
-        apiKey: process.env.DEEPSEEK_API_KEY, // Simpan di .env
+        apiKey: process.env.DEEPSEEK_API_KEY, 
         model: 'deepseek-chat',
         free: true
     },
-    // Pilihan 2: GROQ (GRATIS - alternatif)
     GROQ: {
         url: 'https://api.groq.com/openai/v1/chat/completions',
         apiKey: process.env.GROQ_API_KEY,
         model: 'llama-3.1-8b-instant',
         free: true
     },
-    // Pilihan 3: OpenAI (berbayar)
     OPENAI: {
         url: 'https://api.openai.com/v1/chat/completions',
         apiKey: process.env.OPENAI_API_KEY,
@@ -31,10 +26,7 @@ const API_CONFIGS = {
     }
 };
 
-// PILIH API YANG MAU DIPAKAI (ubah nilai ini)
-const ACTIVE_API = 'GROQ'; // Bisa diganti ke 'GROQ' atau 'OPENAI'
-
-// ====================== KELAS MANAGER ======================
+const ACTIVE_API = 'GROQ'; 
 class ArtoriaPersonalityManager {
     constructor() {
         this.personality = this.createArtoriaPersonality();
@@ -230,25 +222,20 @@ class APIManager {
 
     async getAPIResponse(userMessage, userId) {
         try {
-            // Update profile
             this.personalityManager.updateUserProfile(userId, userMessage);
 
-            // Build prompt
             const systemPrompt = this.personalityManager.buildPersonalityPrompt(userMessage, userId);
 
-            // Check API key
             if (!this.config.apiKey) {
                 console.error(`API key untuk ${ACTIVE_API} tidak ditemukan!`);
                 console.error(`Simpan di .env sebagai: ${ACTIVE_API}_API_KEY=your_key_here`);
                 return this.getFallbackResponse(userMessage, userId);
             }
 
-            // Add to history
             this.personalityManager.addToHistory(userId, 'user', userMessage);
 
             console.log(`Mengirim request ke ${ACTIVE_API}...`);
 
-            // Prepare request
             const requestData = {
                 model: this.config.model,
                 messages: [
@@ -260,7 +247,6 @@ class APIManager {
                 stream: false
             };
 
-            // Send request
             const response = await axios.post(
                 this.config.url,
                 requestData,
@@ -270,19 +256,16 @@ class APIManager {
                         'Content-Type': 'application/json',
                         'User-Agent': 'Artoria-Bot/1.0'
                     },
-                    timeout: 30000 // 30 detik timeout
+                    timeout: 30000 
                 }
             );
 
-            // Extract response
             if (response.data?.choices?.[0]?.message?.content) {
                 const aiResponse = response.data.choices[0].message.content;
                 const cleanedResponse = this.cleanResponse(aiResponse);
 
-                // Add to history
                 this.personalityManager.addToHistory(userId, 'assistant', cleanedResponse);
 
-                // Periodically save
                 if (this.personalityManager.getUserProfile(userId).interactionCount % 10 === 0) {
                     this.personalityManager.saveConfig();
                 }
@@ -303,18 +286,16 @@ class APIManager {
     }
 
     cleanResponse(response) {
-        // Bersihkan response
         let cleaned = response
-            .replace(/```[\s\S]*?```/g, '')  // Hapus code blocks
-            .replace(/`/g, '')               // Hapus inline code
-            .replace(/\*\*/g, '')            // Hapus bold
-            .replace(/\*/g, '')              // Hapus italics
-            .replace(/#/g, '')               // Hapus headers
-            .replace(/\[.*?\]/g, '')         // Hapus link tags
-            .replace(/Asisten:|AI:|Chatbot:|Assistant:/gi, '') // Hapus identifier AI
+            .replace(/```[\s\S]*?```/g, '') 
+            .replace(/`/g, '')              
+            .replace(/\*\*/g, '')           
+            .replace(/\*/g, '')              
+            .replace(/#/g, '')               
+            .replace(/\[.*?\]/g, '')         
+            .replace(/Asisten:|AI:|Chatbot:|Assistant:/gi, '') 
             .trim();
 
-        // Pastikan tidak kosong
         if (!cleaned || cleaned.length < 2) {
             return "Hmm, Artoria sedang berpikir...";
         }
@@ -355,7 +336,6 @@ class APIManager {
     }
 }
 
-// ====================== FUNGSI UTILITAS ======================
 function loadUserGroupData() {
     try {
         if (fs.existsSync(USER_GROUP_DATA)) {
@@ -380,7 +360,6 @@ function delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// ====================== HANDLER UTAMA ======================
 const apiManager = new APIManager();
 
 async function handleChatbotCommand(sock, chatId, message, match) {
@@ -389,29 +368,26 @@ async function handleChatbotCommand(sock, chatId, message, match) {
             message.message?.extendedTextMessage?.text || '';
         const sender = message.key.participant || message.key.remoteJid;
 
-        // Tunjukkan typing
         await sock.sendPresenceUpdate('composing', chatId);
         await delay(800);
 
-        // Load data grup
         const groupData = loadUserGroupData();
 
-        // Cek jika tidak ada perintah
         if (!match) {
             const botNumber = sock.user.id.split(':')[0];
             const helpText = `Panduan Artoria Pendragon 🤖
 
-🔧 PERINTAH:
+PERINTAH:
 .chatbot on  - Nyalakan Artoria di grup ini
 .chatbot off - Matikan Artoria di grup ini
 .chatbot     - Lihat panduan ini
 
-💬 CARA AJAK BICARA:
+CARA AJAK BICARA:
 1. Mention @${botNumber}
 2. Sebut "Artoria" dalam pesan
 3. Balas pesan Artoria
 
-✨ CONTOH:
+CONTOH:
 "@${botNumber} halo Artoria"
 "Artoria, apa kabar?"
 "Hai Artoria, cerita dong"
@@ -427,7 +403,6 @@ Artoria siap menjadi teman ngobrolmu!`;
         const command = match.trim().toLowerCase();
         const botNumber = sock.user.id.split(':')[0];
 
-        // Cek admin untuk grup
         let isAdmin = false;
         if (chatId.endsWith('@g.us')) {
             try {
@@ -439,7 +414,6 @@ Artoria siap menjadi teman ngobrolmu!`;
             }
         }
 
-        // Handle command
         if (command === 'on') {
             if (chatId.endsWith('@g.us') && !isAdmin) {
                 return sock.sendMessage(chatId, {
@@ -476,7 +450,6 @@ Artoria siap menjadi teman ngobrolmu!`;
             });
         }
 
-        // Command tidak dikenal
         return sock.sendMessage(chatId, {
             text: 'Perintah tidak dikenali. Gunakan .chatbot untuk melihat panduan',
             quoted: message
@@ -493,7 +466,6 @@ Artoria siap menjadi teman ngobrolmu!`;
 
 async function handleChatbotResponse(sock, chatId, message, userMessage, senderId) {
     try {
-        // Cek apakah chatbot aktif di chat ini
         const groupData = loadUserGroupData();
         if (!groupData.chatbot || !groupData.chatbot[chatId]) {
             return;
@@ -502,17 +474,14 @@ async function handleChatbotResponse(sock, chatId, message, userMessage, senderI
         const botNumber = sock.user.id.split(':')[0];
         const botJid = botNumber + '@s.whatsapp.net';
 
-        // Cek apakah pesan untuk Artoria
         let isForArtoria = false;
         let cleanedMessage = userMessage;
 
-        // 1. Cek mention
         if (cleanedMessage.includes(`@${botNumber}`)) {
             isForArtoria = true;
             cleanedMessage = cleanedMessage.replace(new RegExp(`@${botNumber}`, 'gi'), '').trim();
         }
 
-        // 2. Cek nama Artoria
         const namePatterns = ['artoria', 'saber', 'pendragon'];
         const lowerMessage = cleanedMessage.toLowerCase();
 
@@ -523,29 +492,23 @@ async function handleChatbotResponse(sock, chatId, message, userMessage, senderI
             });
         }
 
-        // 3. Cek reply ke Artoria
         if (message.message?.extendedTextMessage?.contextInfo?.participant === botJid) {
             isForArtoria = true;
         }
 
         if (!isForArtoria) return;
 
-        // Jika pesan kosong setelah dibersihkan
         if (!cleanedMessage.trim()) {
             cleanedMessage = 'Hai';
         }
 
-        // Tunjukkan typing
         await sock.sendPresenceUpdate('composing', chatId);
 
-        // Dapatkan respons dari API
         const response = await apiManager.getAPIResponse(cleanedMessage, senderId);
 
-        // Delay natural berdasarkan panjang respons
         const responseDelay = Math.min(cleanedMessage.length * 10, 3000);
         await delay(responseDelay);
 
-        // Kirim respons
         await sock.sendMessage(chatId, {
             text: response
         }, {
@@ -554,18 +517,15 @@ async function handleChatbotResponse(sock, chatId, message, userMessage, senderI
 
     } catch (error) {
         console.error('Error di chatbot response:', error);
-        // Jangan kirim error message ke user
     }
 }
 
-// ====================== SETUP REMINDER ======================
 console.log('\n' + '='.repeat(50));
 console.log('ARTORIA CHATBOT SETUP');
 console.log('='.repeat(50));
 console.log(`API Aktif: ${ACTIVE_API}`);
 console.log(`URL: ${API_CONFIGS[ACTIVE_API]?.url || 'Tidak ditemukan'}`);
 
-// Cek API key
 if (!API_CONFIGS[ACTIVE_API]?.apiKey) {
     console.log('\n⚠️  PERINGATAN: API KEY TIDAK DITEMUKAN!');
     console.log(`Simpan API key di file .env sebagai:`);
@@ -580,7 +540,6 @@ if (!API_CONFIGS[ACTIVE_API]?.apiKey) {
     console.log('='.repeat(50) + '\n');
 }
 
-// ====================== EKSPOR ======================
 module.exports = {
     handleChatbotCommand,
     handleChatbotResponse

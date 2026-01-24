@@ -88,7 +88,6 @@ async function handleLinkDetection(sock, chatId, message, userMessage, senderId)
         const antilinkSetting = await getAntilink(chatId, 'on');
         if (!antilinkSetting?.enabled) return;
 
-        // Check if user is admin (admins can post links)
         let isUserAdmin = false;
         try {
             const groupMetadata = await sock.groupMetadata(chatId);
@@ -98,10 +97,8 @@ async function handleLinkDetection(sock, chatId, message, userMessage, senderId)
             console.error('Error cek admin status:', error);
         }
 
-        // Admins can post links
         if (isUserAdmin) return;
 
-        // Log the full message object to diagnose message structure
         console.log("Cek pesan untuk link:", userMessage);
 
         let shouldDelete = false;
@@ -113,7 +110,6 @@ async function handleLinkDetection(sock, chatId, message, userMessage, senderId)
             allLinks: /https?:\/\/[^\s]+/,
         };
 
-        // Detect WhatsApp Group links
         if (linkPatterns.whatsappGroup.test(userMessage)) {
             console.log('Ketemu link WhatsApp grup!');
             shouldDelete = true;
@@ -147,7 +143,6 @@ async function handleLinkDetection(sock, chatId, message, userMessage, senderId)
 
             const mentionedJidList = [senderId];
 
-            // Pilih pesan berdasarkan aksi yang diatur
             const action = antilinkSetting.action || 'delete';
             let warningMessage = `Hai @${senderId.split('@')[0]}, jangan post link ya~`;
 

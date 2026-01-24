@@ -7,7 +7,6 @@ const util = require('util');
 
 const execPromise = util.promisify(exec);
 
-// API yang lebih stabil
 const songApis = [
     {
         name: "Y2Mate",
@@ -34,17 +33,14 @@ const songApis = [
     }
 ];
 
-// Extract YouTube ID
 function extractYouTubeId(url) {
     const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
     const match = url.match(regExp);
     return (match && match[2].length === 11) ? match[2] : null;
 }
 
-// Get YouTube video info
 async function getYouTubeInfo(query) {
     try {
-        // Check if it's already a YouTube URL
         if (query.match(/(youtube\.com|youtu\.be)/i)) {
             const videoId = extractYouTubeId(query);
             const searchResult = await yts({ videoId });
@@ -71,14 +67,12 @@ async function getYouTubeInfo(query) {
                 thumbnail: null
             };
         } else {
-            // Search for the song
             const { videos } = await yts(query);
 
             if (!videos || videos.length === 0) {
                 throw new Error('Lagu tidak ditemukan di YouTube');
             }
 
-            // Pilih video terbaik
             const video = videos[0];
 
             return {
@@ -96,7 +90,6 @@ async function getYouTubeInfo(query) {
     }
 }
 
-// Get audio URL dengan metode lokal (yt-dlp)
 async function getAudioWithYtDlp(youtubeUrl, title) {
     try {
         const tempDir = path.join(__dirname, '../temp');
@@ -107,7 +100,6 @@ async function getAudioWithYtDlp(youtubeUrl, title) {
         const timestamp = Date.now();
         const outputFile = path.join(tempDir, `audio_${timestamp}.mp3`);
 
-        // Cek apakah yt-dlp tersedia
         try {
             await execPromise('yt-dlp --version');
         } catch (e) {
@@ -120,7 +112,6 @@ async function getAudioWithYtDlp(youtubeUrl, title) {
             }
         }
 
-        // Download audio dengan yt-dlp
         console.log('Mendownload dengan yt-dlp...');
         const command = `yt-dlp -x --audio-format mp3 --audio-quality 128K -o "${outputFile}" "${youtubeUrl}"`;
 
@@ -140,7 +131,6 @@ async function getAudioWithYtDlp(youtubeUrl, title) {
             }
         } catch (error) {
             console.log('yt-dlp error:', error.message);
-            // Hapus file jika gagal
             if (fs.existsSync(outputFile)) {
                 fs.unlinkSync(outputFile);
             }
@@ -153,17 +143,13 @@ async function getAudioWithYtDlp(youtubeUrl, title) {
     }
 }
 
-// Get audio URL dengan API online
 async function getAudioUrl(videoInfo) {
-    // Coba metode lokal pertama
     const localResult = await getAudioWithYtDlp(videoInfo.url, videoInfo.title);
     if (localResult) {
         return localResult;
     }
 
-    // Jika lokal gagal, coba API online
     const onlineApis = [
-        // API 1: y2mate alternative
         async () => {
             try {
                 console.log('Mencoba API y2mate...');
@@ -190,7 +176,6 @@ async function getAudioUrl(videoInfo) {
             }
         },
 
-        // API 2: loader.to
         async () => {
             try {
                 console.log('Mencoba API loader.to...');
@@ -219,7 +204,6 @@ async function getAudioUrl(videoInfo) {
             }
         },
 
-        // API 3: mp3-convert.org
         async () => {
             try {
                 console.log('Mencoba API mp3-convert...');
@@ -245,11 +229,9 @@ async function getAudioUrl(videoInfo) {
             }
         },
 
-        // API 4: yt5s (bekerja langsung dengan YouTube)
         async () => {
             try {
                 console.log('Mencoba metode yt5s...');
-                // Step 1: Get video info
                 const infoResponse = await axios.post('https://yt5s.com/api/ajaxSearch/index',
                     `q=${encodeURIComponent(videoInfo.url)}&vt=mp3`,
                     {
@@ -262,7 +244,6 @@ async function getAudioUrl(videoInfo) {
                 );
 
                 if (infoResponse.data && infoResponse.data.vid) {
-                    // Step 2: Convert to MP3
                     const convertResponse = await axios.post('https://yt5s.com/api/ajaxConvert/convert',
                         `vid=${infoResponse.data.vid}&k=${infoResponse.data.links.mp3['128']?.k || infoResponse.data.links.mp3['320']?.k}`,
                         {
@@ -290,7 +271,6 @@ async function getAudioUrl(videoInfo) {
         }
     ];
 
-    // Coba semua API
     for (let i = 0; i < onlineApis.length; i++) {
         try {
             const result = await onlineApis[i]();
@@ -310,7 +290,6 @@ async function getAudioUrl(videoInfo) {
     };
 }
 
-// Clean filename
 function cleanFileName(text) {
     return text
         .replace(/[<>:"/\\|?*]/g, '')
@@ -319,7 +298,6 @@ function cleanFileName(text) {
         .substring(0, 50);
 }
 
-// Format duration
 function formatDuration(seconds) {
     if (!seconds) return 'Unknown';
 
@@ -329,7 +307,6 @@ function formatDuration(seconds) {
     return `${minutes}:${secs.toString().padStart(2, '0')}`;
 }
 
-// Update pesan tanpa delete
 async function updateMessage(sock, chatId, messageKey, newText) {
     try {
         await sock.sendMessage(chatId, {
@@ -337,13 +314,11 @@ async function updateMessage(sock, chatId, messageKey, newText) {
             edit: messageKey
         });
     } catch (error) {
-        // Jika edit gagal, kirim pesan baru
         console.log('Gagal edit pesan, mengirim pesan baru:', error.message);
         await sock.sendMessage(chatId, { text: newText });
     }
 }
 
-// Main song command
 async function songCommand(sock, chatId, message) {
     let statusMessage = null;
     let statusKey = null;
@@ -362,7 +337,6 @@ async function songCommand(sock, chatId, message) {
             }, { quoted: message });
         }
 
-        // Kirim status awal
         statusMessage = await sock.sendMessage(chatId, {
             text: `Memproses Audio YouTube\n\nURL: ${searchQuery.includes('youtube.com') || searchQuery.includes('youtu.be') ? searchQuery : 'Mencari: ' + searchQuery}\n\nMulai download...`
         });
@@ -370,18 +344,15 @@ async function songCommand(sock, chatId, message) {
 
         console.log(`Mencari lagu: ${searchQuery}`);
 
-        // Update status
         await updateMessage(sock, chatId, statusKey,
             `Memproses Audio YouTube\n\n` +
             `URL: ${searchQuery.includes('youtube.com') || searchQuery.includes('youtu.be') ? searchQuery : 'Mencari: ' + searchQuery}\n\n` +
             `Status: Mencari video di YouTube...`
         );
 
-        // Dapatkan info video
         const videoInfo = await getYouTubeInfo(searchQuery);
         console.log(`Video ditemukan: ${videoInfo.title}`);
 
-        // Update status
         await updateMessage(sock, chatId, statusKey,
             `Memproses Audio YouTube\n\n` +
             `URL: ${videoInfo.url}\n\n` +
@@ -391,7 +362,6 @@ async function songCommand(sock, chatId, message) {
             `Status: Mencari sumber audio...`
         );
 
-        // Durasi maksimal 15 menit
         if (videoInfo.duration && videoInfo.duration > 900) {
             await updateMessage(sock, chatId, statusKey,
                 `Memproses Audio YouTube\n\n` +
@@ -403,7 +373,6 @@ async function songCommand(sock, chatId, message) {
             return;
         }
 
-        // Dapatkan URL audio
         await updateMessage(sock, chatId, statusKey,
             `Memproses Audio YouTube\n\n` +
             `URL: ${videoInfo.url}\n\n` +
@@ -428,10 +397,8 @@ async function songCommand(sock, chatId, message) {
 
         console.log(`Audio didapatkan dari: ${audioData.api}`);
 
-        // Jika audio sudah didownload lokal (yt-dlp)
         if (audioData.filePath) {
             try {
-                // Kirim audio file
                 const stats = fs.statSync(audioData.filePath);
                 const fileSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
 
@@ -448,7 +415,6 @@ async function songCommand(sock, chatId, message) {
                     caption: `✅ ${videoInfo.title}\n👤 ${videoInfo.artist}\n⏱️ ${formatDuration(videoInfo.duration)}\n📦 ${fileSizeMB} MB\n🔧 ${audioData.api}`
                 });
 
-                // Update status akhir
                 await updateMessage(sock, chatId, statusKey,
                     `Memproses Audio YouTube\n\n` +
                     `URL: ${videoInfo.url}\n\n` +
@@ -459,7 +425,6 @@ async function songCommand(sock, chatId, message) {
                     `Metode: ${audioData.api}`
                 );
 
-                // Cleanup
                 setTimeout(() => {
                     if (fs.existsSync(audioData.filePath)) {
                         fs.unlinkSync(audioData.filePath);
@@ -480,14 +445,12 @@ async function songCommand(sock, chatId, message) {
             return;
         }
 
-        // Jika dapat URL audio (API online)
         await updateMessage(sock, chatId, statusKey,
             `Memproses Audio YouTube\n\n` +
             `URL: ${videoInfo.url}\n\n` +
             `Status: Mendownload dari ${audioData.api}...`
         );
 
-        // Download audio dari URL
         const tempDir = path.join(__dirname, '../temp');
         if (!fs.existsSync(tempDir)) {
             fs.mkdirSync(tempDir, { recursive: true });
@@ -516,7 +479,6 @@ async function songCommand(sock, chatId, message) {
                 response.data.on('error', reject);
             });
 
-            // Kirim audio
             const stats = fs.statSync(tempFile);
             const fileSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
 
@@ -533,7 +495,6 @@ async function songCommand(sock, chatId, message) {
                 caption: `✅ ${videoInfo.title}\n👤 ${videoInfo.artist}\n⏱️ ${formatDuration(videoInfo.duration)}\n📦 ${fileSizeMB} MB\n🔧 ${audioData.api}`
             });
 
-            // Update status akhir
             await updateMessage(sock, chatId, statusKey,
                 `Memproses Audio YouTube\n\n` +
                 `URL: ${videoInfo.url}\n\n` +
@@ -544,7 +505,6 @@ async function songCommand(sock, chatId, message) {
                 `Metode: ${audioData.api}`
             );
 
-            // Cleanup
             setTimeout(() => {
                 if (fs.existsSync(tempFile)) {
                     fs.unlinkSync(tempFile);
@@ -583,12 +543,10 @@ async function songCommand(sock, chatId, message) {
     }
 }
 
-// Simple version
 async function songSimpleCommand(sock, chatId, message) {
     return await songCommand(sock, chatId, message);
 }
 
-// Export
 module.exports = {
     song: songCommand,
     music: songCommand,

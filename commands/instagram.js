@@ -1,6 +1,5 @@
 const { igdl } = require("ruhend-scraper");
 
-// Store processed message IDs untuk anti-duplikat
 const processedMessages = new Set();
 
 function extractUniqueMedia(mediaData) {
@@ -33,7 +32,6 @@ async function instagramCommand(sock, chatId, message) {
             }, { quoted: message });
         }
 
-        // Validasi URL IG
         const igPatterns = [
             /https?:\/\/(?:www\.)?instagram\.com\//,
             /https?:\/\/(?:www\.)?instagr\.am\//,

@@ -6,14 +6,12 @@ const crypto = require('crypto');
 
 async function takeCommand(sock, chatId, message, args) {
     try {
-        // Check if message is a reply to a sticker
         const quotedMessage = message.message?.extendedTextMessage?.contextInfo?.quotedMessage;
         if (!quotedMessage?.stickerMessage) {
-            await sock.sendMessage(chatId, { text: '❌ Reply to a sticker with .take <packname>' });
+            await sock.sendMessage(chatId, { text: 'Reply to a sticker with .take <packname>' });
             return;
         }
 
-        // Get the packname from args or use default
         const packname = args.join(' ') || 'Knight Bot';
 
         try {
@@ -45,7 +43,7 @@ async function takeCommand(sock, chatId, message, args) {
             const json = {
                 'sticker-pack-id': crypto.randomBytes(32).toString('hex'),
                 'sticker-pack-name': packname,
-                'emojis': ['🤖']
+                'emojis': ['']
             };
 
             // Create exif buffer
@@ -54,13 +52,10 @@ async function takeCommand(sock, chatId, message, args) {
             const exif = Buffer.concat([exifAttr, jsonBuffer]);
             exif.writeUIntLE(jsonBuffer.length, 14, 4);
 
-            // Set the exif data
             img.exif = exif;
 
-            // Get the final buffer with metadata
             const finalBuffer = await img.save(null);
 
-            // Send the sticker
             await sock.sendMessage(chatId, {
                 sticker: finalBuffer
             }, {
@@ -69,12 +64,12 @@ async function takeCommand(sock, chatId, message, args) {
 
         } catch (error) {
             console.error('Sticker processing error:', error);
-            await sock.sendMessage(chatId, { text: '❌ Error processing sticker' });
+            await sock.sendMessage(chatId, { text: 'Error processing sticker' });
         }
 
     } catch (error) {
         console.error('Error in take command:', error);
-        await sock.sendMessage(chatId, { text: '❌ Error processing command' });
+        await sock.sendMessage(chatId, { text: 'Error processing command' });
     }
 }
 

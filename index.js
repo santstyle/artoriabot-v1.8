@@ -3,14 +3,11 @@ const { Boom } = require('@hapi/boom')
 const fs = require('fs')
 const chalk = require('chalk')
 
-// === FIXED FFMPEG CONFIGURATION ===
 console.log('Artoria Pendragon | Bot')
 
-// Gunakan FFmpeg dari sistem Ubuntu
 process.env.FFMPEG_PATH = 'ffmpeg'
 process.env.FFPROBE_PATH = 'ffprobe'
 
-// Hapus folder ffmpeg Windows jika ada
 try {
     if (fs.existsSync('./ffmpeg')) {
         console.log('🗑️  Removing Windows FFmpeg folder...')
@@ -21,7 +18,6 @@ try {
 }
 
 console.log('✅ Using system FFmpeg')
-// === END FFMPEG CONFIG ===
 
 const FileType = require('file-type')
 const axios = require('axios')
@@ -51,15 +47,12 @@ const { parsePhoneNumber } = require("libphonenumber-js")
 const { PHONENUMBER_MCC } = require('@whiskeysockets/baileys/lib/Utils/generics')
 const { join } = require('path')
 
-// Import lightweight store
 const store = require('./lib/lightweight_store')
 
-// Initialize store
 store.readFromFile()
 const settings = require('./settings')
 setInterval(() => store.writeToFile(), settings.storeWriteInterval || 10000)
 
-// Memory optimization
 setInterval(() => {
     if (global.gc) {
         global.gc()
@@ -67,7 +60,6 @@ setInterval(() => {
     }
 }, 60000)
 
-// Memory monitoring
 setInterval(() => {
     const used = process.memoryUsage().rss / 1024 / 1024
     if (used > 400) {
@@ -81,7 +73,6 @@ let owner = JSON.parse(fs.readFileSync('./data/owner.json'))
 global.botname = "Artoria Pendragon | Bot"
 global.themeemoji = "•"
 
-// Clear old session data
 function clearOldSessionData() {
     try {
         const sessionDir = './session'
@@ -299,9 +290,8 @@ async function startXeonBotInc() {
     return XeonBotInc
 }
 
-// Start bot
 startXeonBotInc().catch(error => {
-    console.error('💥 Fatal error:', error)
+    console.error('Fatal error:', error)
     setTimeout(() => {
         console.log('🔄 Restarting in 10 seconds...')
         startXeonBotInc()

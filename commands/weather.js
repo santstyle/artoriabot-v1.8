@@ -2,7 +2,7 @@ const axios = require('axios');
 
 module.exports = async function (sock, chatId, city) {
     try {
-        const apiKey = '4902c0f2550f58298ad4146a92b65e10';  // Replace with your OpenWeather API Key
+        const apiKey = '4902c0f2550f58298ad4146a92b65e10';  
         const response = await axios.get(`https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`);
         const weather = response.data;
 

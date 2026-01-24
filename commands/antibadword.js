@@ -2,11 +2,9 @@ const { handleAntiBadwordCommand } = require('../lib/antibadword');
 
 async function antibadwordCommand(sock, chatId, message, senderId, isSenderAdmin) {
     try {
-        // Extract match from message
         const text = message.message?.conversation ||
             message.message?.extendedTextMessage?.text || '';
 
-        // Ambil argumen setelah .antibadword
         const match = text.split(' ').slice(1).join(' ');
 
         await handleAntiBadwordCommand(sock, chatId, message, match, senderId);

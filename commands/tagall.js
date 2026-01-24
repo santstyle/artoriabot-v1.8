@@ -11,7 +11,6 @@ async function tagAllCommand(sock, chatId, senderId) {
             return;
         }
 
-        // Get group metadata
         const groupMetadata = await sock.groupMetadata(chatId);
         const participants = groupMetadata.participants;
 
@@ -22,13 +21,11 @@ async function tagAllCommand(sock, chatId, senderId) {
             return;
         }
 
-        // Create message with each member on a new line
         let message = 'Tag buat semua member grup:\n\n';
         participants.forEach((participant, index) => {
             message += `${index + 1}. @${participant.id.split('@')[0]}\n`;
         });
 
-        // Send message with mentions
         await sock.sendMessage(chatId, {
             text: message,
             mentions: participants.map(p => p.id)

@@ -64,7 +64,7 @@ Here are the available command menus in Artoria Bot:
 
 *DOWNLOADER*
 • .lyrics <judul lagu>
-• .song <song_name>
+• .song <song name>
 • .play <link>
 • .pin <kata kunci gambar>
 • .twitter <link>

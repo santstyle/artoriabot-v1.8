@@ -42,7 +42,6 @@ module.exports = {
     // Memory limits
     max_memory_restart: "450M",
 
-    // Timezone
     time: true
   }]
 }

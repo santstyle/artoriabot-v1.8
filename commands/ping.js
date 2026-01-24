@@ -27,7 +27,6 @@ async function pingCommand(sock, chatId, message) {
 
         const uptimeFormatted = formatTime(process.uptime());
 
-        // RAM usage info
         const usedMemory = (process.memoryUsage().rss / 1024 / 1024).toFixed(2);
         const totalMemory = (os.totalmem() / 1024 / 1024).toFixed(2);
 

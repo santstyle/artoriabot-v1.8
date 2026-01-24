@@ -12,7 +12,6 @@ async function playCommand(sock, chatId, message, command) {
         const text = message.message?.conversation ||
             message.message?.extendedTextMessage?.text || '';
 
-        // Ambil URL
         let url = '';
         if (text.includes('.play ')) {
             url = text.split('.play ')[1].trim();
@@ -28,12 +27,10 @@ async function playCommand(sock, chatId, message, command) {
             }, { quoted: message });
         }
 
-        // PESAN 1: Proses awal
         const processingMsg = await sock.sendMessage(chatId, {
             text: 'Memproses Audio YouTube\n\nURL: ' + url + '\n\nMohon tunggu...'
         }, { quoted: message });
 
-        // Extract video ID sederhana
         function getVideoId(url) {
             if (url.includes('youtu.be/')) {
                 const parts = url.split('youtu.be/');
@@ -60,7 +57,6 @@ async function playCommand(sock, chatId, message, command) {
 
         const youtubeUrl = 'https://www.youtube.com/watch?v=' + videoId;
 
-        // Cek yt-dlp
         try {
             await execPromise('yt-dlp --version');
         } catch (error) {
@@ -70,12 +66,10 @@ async function playCommand(sock, chatId, message, command) {
             return;
         }
 
-        // Update pesan 1
         await sock.sendMessage(chatId, {
             text: 'Memproses Audio YouTube\n\nURL: ' + url + '\n\nVideo ID: ' + videoId + '\n\nMulai download...'
         });
 
-        // Buat folder temp
         const tempDir = path.join(__dirname, '../temp');
         if (!fs.existsSync(tempDir)) {
             fs.mkdirSync(tempDir, { recursive: true });
@@ -83,10 +77,8 @@ async function playCommand(sock, chatId, message, command) {
 
         tempFile = path.join(tempDir, 'audio_' + Date.now() + '.mp3');
 
-        // DOWNLOAD DENGAN yt-dlp - TIDAK PAKE API!
         console.log('Downloading audio with yt-dlp for video:', videoId);
 
-        // Command yt-dlp untuk download audio
         const downloadCmd = 'yt-dlp -x --audio-format mp3 -o "' + tempFile + '" "' + youtubeUrl + '"';
 
         try {
@@ -95,12 +87,10 @@ async function playCommand(sock, chatId, message, command) {
         } catch (downloadError) {
             console.log('Download error, trying alternative...');
 
-            // Coba format lain
             const altCmd = 'yt-dlp -f "bestaudio" --extract-audio --audio-format mp3 -o "' + tempFile + '" "' + youtubeUrl + '"';
             await execPromise(altCmd, { timeout: 120000 });
         }
 
-        // Cek file
         if (!fs.existsSync(tempFile)) {
             throw new Error('File tidak berhasil didownload');
         }
@@ -112,19 +102,16 @@ async function playCommand(sock, chatId, message, command) {
 
         const fileSizeMB = (fileStats.size / (1024 * 1024)).toFixed(2);
 
-        // Update pesan 2
         await sock.sendMessage(chatId, {
             text: 'Download selesai\nUkuran: ' + fileSizeMB + ' MB\nMengirim audio...'
         });
 
-        // Kirim audio file TANPA CAPTION
         await sock.sendMessage(chatId, {
             audio: fs.readFileSync(tempFile),
             mimetype: 'audio/mpeg',
             fileName: 'youtube_' + videoId + '.mp3'
         });
 
-        // Kirim pesan sukses
         await sock.sendMessage(chatId, {
             text: 'Audio Berhasil Didownload\n\nLagu YouTube telah dikirim\n\nUntuk download lagi:\n.play <link-youtube>'
         });
@@ -137,7 +124,6 @@ async function playCommand(sock, chatId, message, command) {
         });
 
     } finally {
-        // Cleanup
         if (tempFile && fs.existsSync(tempFile)) {
             setTimeout(() => {
                 try {
@@ -151,7 +137,6 @@ async function playCommand(sock, chatId, message, command) {
     }
 }
 
-// Export commands
 module.exports = {
     play: playCommand,
     song: playCommand,

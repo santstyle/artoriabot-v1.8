@@ -2,18 +2,14 @@ const fs = require('fs');
 const path = require('path');
 const isAdmin = require('../lib/isAdmin');
 
-// Define paths
 const databaseDir = path.join(process.cwd(), 'data');
 const warningsPath = path.join(databaseDir, 'warnings.json');
 
-// Initialize warnings file if it doesn't exist
 function initializeWarningsFile() {
-    // Create database directory if it doesn't exist
     if (!fs.existsSync(databaseDir)) {
         fs.mkdirSync(databaseDir, { recursive: true });
     }
 
-    // Create warnings.json if it doesn't exist
     if (!fs.existsSync(warningsPath)) {
         fs.writeFileSync(warningsPath, JSON.stringify({}), 'utf8');
     }
@@ -21,10 +17,8 @@ function initializeWarningsFile() {
 
 async function warnCommand(sock, chatId, senderId, mentionedJids, message) {
     try {
-        // Initialize files first
         initializeWarningsFile();
 
-        // First check if it's a group
         if (!chatId.endsWith('@g.us')) {
             await sock.sendMessage(chatId, {
                 text: 'Hmm, command warn cuma bisa dipakai di grup aja lho~ Kirim ke grup ya'
@@ -32,7 +26,6 @@ async function warnCommand(sock, chatId, senderId, mentionedJids, message) {
             return;
         }
 
-        // Check admin status first
         try {
             const { isSenderAdmin, isBotAdmin } = await isAdmin(sock, chatId, senderId);
 

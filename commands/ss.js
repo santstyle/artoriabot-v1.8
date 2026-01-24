@@ -10,20 +10,16 @@ async function handleSsCommand(sock, chatId, message, match) {
     }
 
     try {
-        // Show typing indicator
         await sock.presenceSubscribe(chatId);
         await sock.sendPresenceUpdate('composing', chatId);
 
-        // Kasih tau kalau lagi proses
         await sock.sendMessage(chatId, {
             text: 'Bentar ya, lagi aku ambil screenshotnya~',
             quoted: message
         });
 
-        // Extract URL from command
         const url = match.trim();
 
-        // Validate URL
         if (!url.startsWith('http://') && !url.startsWith('https://')) {
             return sock.sendMessage(chatId, {
                 text: 'Wah, URL nya harus dimulai dari http:// atau https:// nih',
@@ -31,7 +27,6 @@ async function handleSsCommand(sock, chatId, message, match) {
             });
         }
 
-        // Call the API
         const apiUrl = `https://api.siputzx.my.id/api/tools/ssweb?url=${encodeURIComponent(url)}&theme=light&device=desktop`;
         const response = await fetch(apiUrl, { headers: { 'accept': '*/*' } });
 
@@ -39,10 +34,8 @@ async function handleSsCommand(sock, chatId, message, match) {
             throw new Error(`API error: ${response.status}`);
         }
 
-        // Get the image buffer
         const imageBuffer = await response.buffer();
 
-        // Send the screenshot
         await sock.sendMessage(chatId, {
             image: imageBuffer,
             caption: 'Ini screenshotnya~'

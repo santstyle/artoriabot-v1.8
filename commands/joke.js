@@ -5,7 +5,6 @@ module.exports = async function (sock, chatId) {
         const response = await axios.get('https://candaan-api.vercel.app/api/text/random', {
             headers: { Accept: 'application/json' }
         });
-        // Ambil joke sebagai string dari response.data.data
         const joke = response.data.data;
         await sock.sendMessage(chatId, { text: joke });
     } catch (error) {

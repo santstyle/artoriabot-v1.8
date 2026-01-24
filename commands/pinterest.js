@@ -3,7 +3,6 @@ const fs = require('fs');
 const path = require('path');
 const cheerio = require('cheerio');
 
-// Google Images Search
 const googleImageSearch = async (query) => {
     try {
         console.log('Searching Google Images for: ' + query);
@@ -23,7 +22,6 @@ const googleImageSearch = async (query) => {
 
         const html = response.data;
 
-        // Cari URL gambar dari Google
         const regexPatterns = [
             /\["https:\/\/[^"]+",\d+,\d+\]/g,
             /"ou":"([^"]+)"/g,
@@ -59,7 +57,6 @@ const googleImageSearch = async (query) => {
             }
         }
 
-        // Method 2: Parsing HTML dengan Cheerio
         if (!imageUrl) {
             const $ = cheerio.load(html);
             $('img').each((i, elem) => {
@@ -73,7 +70,6 @@ const googleImageSearch = async (query) => {
             });
         }
 
-        // Fallback ke Unsplash jika tidak ditemukan
         if (!imageUrl) {
             imageUrl = `https://source.unsplash.com/random/800x600/?${encodeURIComponent(query)}`;
         } else {
@@ -89,7 +85,6 @@ const googleImageSearch = async (query) => {
     }
 };
 
-// Download image
 async function downloadImage(imageUrl, outputPath) {
     return new Promise((resolve, reject) => {
         let cleanUrl = imageUrl;
@@ -160,7 +155,6 @@ async function downloadImage(imageUrl, outputPath) {
     });
 }
 
-// Main command
 async function pinCommand(sock, chatId, message, command) {
     try {
         const text = message.message?.conversation ||
@@ -195,7 +189,6 @@ async function pinCommand(sock, chatId, message, command) {
     }
 }
 
-// Cari dan kirim gambar tanpa caption
 async function searchAndSendImage(sock, chatId, message, query, processingMsg) {
     try {
         await sock.sendMessage(chatId, {
@@ -229,10 +222,8 @@ async function searchAndSendImage(sock, chatId, message, query, processingMsg) {
         try {
             await downloadImage(imageUrl, filePath);
 
-            // Kirim gambar TANPA CAPTION
             await sock.sendMessage(chatId, {
                 image: fs.readFileSync(filePath)
-                // Tidak ada caption
             });
 
             await sock.sendMessage(chatId, {
@@ -252,10 +243,8 @@ async function searchAndSendImage(sock, chatId, message, query, processingMsg) {
             console.error('Download error:', downloadError.message);
 
             try {
-                // Coba kirim langsung dari URL tanpa caption
                 await sock.sendMessage(chatId, {
                     image: { url: imageUrl }
-                    // Tidak ada caption
                 });
 
                 await sock.sendMessage(chatId, {
@@ -280,7 +269,6 @@ async function searchAndSendImage(sock, chatId, message, query, processingMsg) {
     }
 }
 
-// Show help
 async function showHelp(sock, chatId, message) {
     await sock.sendMessage(chatId, {
         text: 'Google Images Search\n\n' +
@@ -294,7 +282,6 @@ async function showHelp(sock, chatId, message) {
     }, { quoted: message });
 }
 
-// Simple version
 async function simplePin(sock, chatId, message) {
     try {
         const text = message.message?.conversation || message.message?.extendedTextMessage?.text || '';
@@ -320,10 +307,8 @@ async function simplePin(sock, chatId, message) {
             return;
         }
 
-        // Kirim gambar tanpa caption
         await sock.sendMessage(chatId, {
             image: { url: imageUrl }
-            // Tidak ada caption
         });
 
         await sock.sendMessage(chatId, {
@@ -339,7 +324,6 @@ async function simplePin(sock, chatId, message) {
     }
 }
 
-// Export
 module.exports = {
     pinterest: pinCommand,
     pin: pinCommand,

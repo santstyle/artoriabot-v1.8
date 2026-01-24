@@ -4,7 +4,6 @@ module.exports = async function (sock, chatId) {
     try {
         const apiKey = 'dcd720a6f1914e2d9dba9790c188c08c';
 
-        // Kasih tau kalau lagi ambil berita
         await sock.sendMessage(chatId, {
             text: 'Bentar ya, lagi aku cariin berita terbaru~'
         });

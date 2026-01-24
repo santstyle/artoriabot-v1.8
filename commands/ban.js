@@ -4,11 +4,9 @@ const path = require('path');
 async function banCommand(sock, chatId, message) {
     let userToBan;
 
-    // Check for mentioned users
     if (message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.length > 0) {
         userToBan = message.message.extendedTextMessage.contextInfo.mentionedJid[0];
     }
-    // Check for replied message
     else if (message.message?.extendedTextMessage?.contextInfo?.participant) {
         userToBan = message.message.extendedTextMessage.contextInfo.participant;
     }
@@ -21,13 +19,11 @@ async function banCommand(sock, chatId, message) {
     }
 
     try {
-        // Pastikan file banned.json ada
         const bannedPath = path.join(__dirname, '../data/banned.json');
         if (!fs.existsSync(bannedPath)) {
             fs.writeFileSync(bannedPath, JSON.stringify([]));
         }
 
-        // Add user to banned list
         const bannedUsers = JSON.parse(fs.readFileSync(bannedPath));
         if (!bannedUsers.includes(userToBan)) {
             bannedUsers.push(userToBan);

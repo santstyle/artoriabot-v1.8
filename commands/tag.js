@@ -23,7 +23,7 @@ async function tagCommand(sock, chatId, senderId, messageText, replyMessage) {
     }
 
     if (!isSenderAdmin) {
-        const stickerPath = './assets/sticktag.webp';  // Path to your sticker
+        const stickerPath = './assets/sticktag.webp';  
         if (fs.existsSync(stickerPath)) {
             const stickerBuffer = fs.readFileSync(stickerPath);
             await sock.sendMessage(chatId, { sticker: stickerBuffer });
@@ -38,7 +38,6 @@ async function tagCommand(sock, chatId, senderId, messageText, replyMessage) {
     if (replyMessage) {
         let messageContent = {};
 
-        // Handle image messages
         if (replyMessage.imageMessage) {
             const filePath = await downloadMediaMessage(replyMessage.imageMessage, 'image');
             messageContent = {
@@ -47,7 +46,6 @@ async function tagCommand(sock, chatId, senderId, messageText, replyMessage) {
                 mentions: mentionedJidList
             };
         }
-        // Handle video messages
         else if (replyMessage.videoMessage) {
             const filePath = await downloadMediaMessage(replyMessage.videoMessage, 'video');
             messageContent = {
@@ -56,14 +54,12 @@ async function tagCommand(sock, chatId, senderId, messageText, replyMessage) {
                 mentions: mentionedJidList
             };
         }
-        // Handle text messages
         else if (replyMessage.conversation || replyMessage.extendedTextMessage) {
             messageContent = {
                 text: replyMessage.conversation || replyMessage.extendedTextMessage.text,
                 mentions: mentionedJidList
             };
         }
-        // Handle document messages
         else if (replyMessage.documentMessage) {
             const filePath = await downloadMediaMessage(replyMessage.documentMessage, 'document');
             messageContent = {

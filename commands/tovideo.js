@@ -18,7 +18,7 @@ const scheduleFileDeletion = (filePath) => {
         } catch (error) {
             console.error(`Failed to delete file:`, error);
         }
-    }, 300000); // 5 menit
+    }, 300000); 
 };
 
 const convertToVideo = async (sock, quotedMessage, chatId, sender, args) => {
@@ -31,16 +31,14 @@ const convertToVideo = async (sock, quotedMessage, chatId, sender, args) => {
             return;
         }
 
-        // Cek apakah stiker adalah animasi (GIF/WebP animasi)
         const isAnimated = stickerMessage.isAnimated || false;
         if (!isAnimated) {
             await sock.sendMessage(chatId, {
-                text: '❌ Fitur .tovideo hanya untuk stiker GIF atau video. Gunakan *.toimage* untuk stiker biasa.'
+                text: 'Fitur .tovideo hanya untuk stiker GIF atau video. Gunakan *.toimage* untuk stiker biasa.'
             });
             return;
         }
 
-        // Download stiker
         const stickerFilePath = path.join(tempDir, `sticker_${Date.now()}.webp`);
         const stream = await downloadContentFromMessage(stickerMessage, 'sticker');
         let buffer = Buffer.from([]);
@@ -50,7 +48,6 @@ const convertToVideo = async (sock, quotedMessage, chatId, sender, args) => {
 
         const outputVideoPath = path.join(tempDir, `video_${Date.now()}.mp4`);
 
-        // Konversi WebP animasi ke MP4 menggunakan FFmpeg
         const ffmpegCommand = `ffmpeg -i "${stickerFilePath}" -vf "scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=#00000000" -c:v libx264 -preset fast -crf 28 -pix_fmt yuv420p -movflags +faststart "${outputVideoPath}"`;
 
         await execPromise(ffmpegCommand);
@@ -67,7 +64,7 @@ const convertToVideo = async (sock, quotedMessage, chatId, sender, args) => {
     } catch (error) {
         console.error('Error converting to video:', error);
         await sock.sendMessage(chatId, {
-            text: '❌ Gagal mengonversi ke video. Pastikan stiker GIF valid.'
+            text: 'Gagal mengonversi ke video. Pastikan stiker GIF valid.'
         });
     }
 };

@@ -36,7 +36,6 @@ async function setLangCommand(sock, chatId, message, args) {
             return;
         }
 
-        // Get the new language messages after setting
         const newLang = langHelper.getLang(chatId);
         await sock.sendMessage(chatId, {
             text: newLang.lang_set_success

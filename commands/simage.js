@@ -28,16 +28,14 @@ const convertSticker = async (sock, quotedMessage, chatId, sender, args) => {
         const stickerMessage = quotedMessage?.stickerMessage || quotedMessage?.message?.stickerMessage;
         if (!stickerMessage) {
             await sock.sendMessage(chatId, {
-                text: '⚠️ Balas pesan stiker dengan perintah *.toimage* atau *.tovideo* untuk mengonversi.'
+                text: 'Balas pesan stiker dengan perintah *.toimage* untuk mengonversi.'
             });
             return;
         }
 
-        // Cek apakah stiker adalah animasi (GIF/WebP animasi)
         const isAnimated = stickerMessage.isAnimated || false;
         const command = args[0]?.toLowerCase() || 'simage';
 
-        // Download stiker
         const stickerFilePath = path.join(tempDir, `sticker_${Date.now()}.webp`);
         const stream = await downloadContentFromMessage(stickerMessage, 'sticker');
         let buffer = Buffer.from([]);
@@ -50,7 +48,7 @@ const convertSticker = async (sock, quotedMessage, chatId, sender, args) => {
         } else if (command === 'tovideo' || command === '.tovideo') {
             if (!isAnimated) {
                 await sock.sendMessage(chatId, {
-                    text: '❌ Stiker ini tidak animasi (GIF). Gunakan *.toimage* untuk stiker biasa.'
+                    text: 'Stiker ini tidak animasi (GIF). Gunakan *.toimage* untuk stiker biasa.'
                 });
                 scheduleFileDeletion(stickerFilePath);
                 return;
@@ -58,7 +56,7 @@ const convertSticker = async (sock, quotedMessage, chatId, sender, args) => {
             await convertToVideo(sock, chatId, stickerFilePath);
         } else {
             await sock.sendMessage(chatId, {
-                text: '❌ Perintah tidak valid. Gunakan:\n*.toimage* - Konversi ke gambar\n*.tovideo* - Konversi ke video (untuk stiker GIF)'
+                text: 'Perintah tidak valid. Gunakan:\n*.toimage* - Konversi ke gambar'
             });
             scheduleFileDeletion(stickerFilePath);
         }
@@ -66,18 +64,16 @@ const convertSticker = async (sock, quotedMessage, chatId, sender, args) => {
     } catch (error) {
         console.error('Error converting sticker:', error);
         await sock.sendMessage(chatId, {
-            text: '❌ Terjadi kesalahan saat mengonversi stiker. Pastikan stiker valid.'
+            text: 'Terjadi kesalahan saat mengonversi stiker. Pastikan stiker valid.'
         });
     }
 };
 
-// Fungsi untuk konversi ke gambar
 const convertToImage = async (sock, chatId, stickerFilePath, isAnimated) => {
     try {
         const outputImagePath = path.join(tempDir, `image_${Date.now()}.png`);
 
         if (isAnimated) {
-            // Untuk stiker animasi, ambil frame pertama
             await sharp(stickerFilePath, { animated: true, pages: 1 })
                 .toFormat('png')
                 .toFile(outputImagePath);
@@ -85,7 +81,7 @@ const convertToImage = async (sock, chatId, stickerFilePath, isAnimated) => {
             const imageBuffer = await fsPromises.readFile(outputImagePath);
             await sock.sendMessage(chatId, {
                 image: imageBuffer,
-                caption: '🖼️ Stiker GIF berhasil dikonversi ke gambar (frame pertama)!'
+                caption: 'Stiker GIF berhasil dikonversi ke gambar (frame pertama)!'
             });
         } else {
             // Untuk stiker biasa
@@ -96,7 +92,7 @@ const convertToImage = async (sock, chatId, stickerFilePath, isAnimated) => {
             const imageBuffer = await fsPromises.readFile(outputImagePath);
             await sock.sendMessage(chatId, {
                 image: imageBuffer,
-                caption: '🖼️ Stiker berhasil dikonversi ke gambar!'
+                caption: 'Stiker berhasil dikonversi ke gambar!'
             });
         }
 
@@ -105,13 +101,12 @@ const convertToImage = async (sock, chatId, stickerFilePath, isAnimated) => {
     } catch (error) {
         console.error('Error converting to image:', error);
         await sock.sendMessage(chatId, {
-            text: '❌ Gagal mengonversi ke gambar. Pastikan stiker tidak rusak.'
+            text: 'Gagal mengonversi ke gambar. Pastikan stiker tidak rusak.'
         });
         scheduleFileDeletion(stickerFilePath);
     }
 };
 
-// Fungsi untuk konversi ke video (MP4)
 const convertToVideo = async (sock, chatId, stickerFilePath) => {
     try {
         const outputVideoPath = path.join(tempDir, `video_${Date.now()}.mp4`);
@@ -119,11 +114,9 @@ const convertToVideo = async (sock, chatId, stickerFilePath) => {
 
         await fsPromises.mkdir(tempFrameDir, { recursive: true });
 
-        // Ekstrak frame dari WebP animasi menggunakan sharp
         const metadata = await sharp(stickerFilePath, { animated: true }).metadata();
         const frameCount = metadata.pages || 1;
 
-        // Simpan setiap frame sebagai PNG
         for (let i = 0; i < frameCount; i++) {
             const framePath = path.join(tempFrameDir, `frame_${i.toString().padStart(3, '0')}.png`);
             await sharp(stickerFilePath, { page: i })
@@ -131,29 +124,25 @@ const convertToVideo = async (sock, chatId, stickerFilePath) => {
                 .toFile(framePath);
         }
 
-        // Konversi frame ke video MP4 menggunakan ffmpeg
         const framePattern = path.join(tempFrameDir, 'frame_%03d.png');
 
         try {
-            // Cek apakah ffmpeg tersedia
             await execPromise('ffmpeg -version');
 
-            // Konversi ke MP4 dengan ffmpeg
             const ffmpegCommand = `ffmpeg -framerate 10 -i "${framePattern}" -c:v libx264 -pix_fmt yuv420p -y "${outputVideoPath}"`;
             await execPromise(ffmpegCommand);
 
             const videoBuffer = await fsPromises.readFile(outputVideoPath);
 
-            // Cek ukuran file video (WhatsApp limit: 16MB)
             const fileSizeMB = videoBuffer.length / (1024 * 1024);
             if (fileSizeMB > 16) {
                 await sock.sendMessage(chatId, {
-                    text: `❌ Video terlalu besar (${fileSizeMB.toFixed(2)}MB). WhatsApp hanya mendukung hingga 16MB.`
+                    text: `Video terlalu besar (${fileSizeMB.toFixed(2)}MB). WhatsApp hanya mendukung hingga 16MB.`
                 });
             } else {
                 await sock.sendMessage(chatId, {
                     video: videoBuffer,
-                    caption: '🎥 Stiker GIF berhasil dikonversi ke video!',
+                    caption: 'Stiker GIF berhasil dikonversi ke video!',
                     gifPlayback: false
                 });
             }
@@ -161,7 +150,6 @@ const convertToVideo = async (sock, chatId, stickerFilePath) => {
         } catch (ffmpegError) {
             console.error('FFmpeg error:', ffmpegError);
 
-            // Fallback: Kirim sebagai GIF jika ffmpeg tidak tersedia
             const gifPath = path.join(tempDir, `gif_${Date.now()}.gif`);
             await sharp(stickerFilePath, { animated: true })
                 .toFormat('gif')
@@ -177,7 +165,6 @@ const convertToVideo = async (sock, chatId, stickerFilePath) => {
             scheduleFileDeletion(gifPath);
         }
 
-        // Bersihkan file sementara
         await fse.remove(tempFrameDir);
         scheduleFileDeletion(outputVideoPath);
         scheduleFileDeletion(stickerFilePath);
@@ -185,11 +172,10 @@ const convertToVideo = async (sock, chatId, stickerFilePath) => {
     } catch (error) {
         console.error('Error converting to video:', error);
         await sock.sendMessage(chatId, {
-            text: '❌ Gagal mengonversi ke video. Pastikan stiker animasi dan bot memiliki ffmpeg.'
+            text: 'Gagal mengonversi ke video. Pastikan stiker animasi dan bot memiliki ffmpeg.'
         });
         scheduleFileDeletion(stickerFilePath);
     }
 };
 
-// Export fungsi utama
 module.exports = convertSticker;

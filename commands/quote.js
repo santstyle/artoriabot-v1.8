@@ -5,7 +5,6 @@ module.exports = async function quoteCommand(sock, chatId, message, args) {
         let url = 'https://indonesian-quotes-api.vercel.app/api/quotes/random';
         if (args[0]) url += `?category=${args[0]}`; // contoh: .quote motivasi
 
-        // Kasih tau kalau lagi cari quote
         await sock.sendMessage(chatId, {
             text: 'Bentar ya, lagi aku cariin quote yang bagus~'
         }, { quoted: message });

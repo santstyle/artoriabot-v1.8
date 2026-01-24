@@ -1,17 +1,14 @@
 const settings = require('./settings');
 require('./config.js');
 
-// === TAMBAHKAN BACKUP FFMPEG CONFIG DI SINI ===
 const { exec } = require('child_process');
 
-// Pastikan path FFmpeg diatur (cadangan untuk main.js)
 if (!process.env.FFMPEG_PATH) {
     const path = require('path');
     const ffmpegPath = path.join(__dirname, 'ffmpeg', 'bin', 'ffmpeg.exe');
     process.env.FFMPEG_PATH = ffmpegPath;
     console.log('Path FFmpeg diatur di main.js:', ffmpegPath);
 }
-// === END BACKUP FFMPEG ===
 
 const { isBanned } = require('./lib/isBanned');
 const yts = require('yt-search');
@@ -24,7 +21,6 @@ const ffmpeg = require('fluent-ffmpeg');
 const { addWelcome, delWelcome, isWelcomeOn, addGoodbye, delGoodBye, isGoodByeOn, isSudo } = require('./lib/index');
 
 
-// Import command
 const tagAllCommand = require('./commands/tagall');
 const { hidetagCommand } = require('./commands/hidetag');
 const helpCommand = require('./commands/help');
@@ -79,14 +75,12 @@ const stickercropCommand = require('./commands/stickercrop');
 const { startAbsen, addAbsen, finishAbsen } = require('./commands/absen');
 const tebakkataCommand = require('./commands/tebakkata');
 
-// Global settings
 global.packname = settings.packname;
 global.author = settings.author;
 
-// Tambahkan ini di dekat bagian atas main.js dengan konfigurasi global lainnya
 
 async function handleMessages(sock, messageUpdate, printLog) {
-    let chatId = null; // Declare chatId at function scope
+    let chatId = null; 
     try {
         const { messages, type } = messageUpdate;
         if (type !== 'notify') return;
@@ -96,12 +90,10 @@ async function handleMessages(sock, messageUpdate, printLog) {
 
 
 
-        // Simpan pesan untuk fitur antidelete
         if (message.message) {
             storeMessage(message);
         }
 
-        // Handle pencabutan pesan
         if (message.message?.protocolMessage?.type === 0) {
             await handleMessageRevocation(sock, message);
             return;
@@ -120,21 +112,17 @@ async function handleMessages(sock, messageUpdate, printLog) {
             ''
         ).toLowerCase().replace(/\.\s+/g, '.').trim();
 
-        // Pertahankan pesan asli untuk command seperti .tag yang membutuhkan huruf asli
         const rawText = message.message?.conversation?.trim() ||
             message.message?.extendedTextMessage?.text?.trim() ||
             message.message?.imageMessage?.caption?.trim() ||
             message.message?.videoMessage?.caption?.trim() ||
             '';
 
-        // Hanya log penggunaan command
         if (userMessage.startsWith('.')) {
             console.log(`Command digunakan di ${isGroup ? 'grup' : 'privat'}: ${userMessage}`);
         }
 
-        // Cek apakah pengguna dibanned (lewati cek ban untuk command .unban)
         if (isBanned(senderId) && !userMessage.startsWith('.unban')) {
-            // Hanya merespons sesekali untuk menghindari spam
             if (Math.random() < 0.1) {
                 await sock.sendMessage(chatId, {
                     text: 'Anda dibanned dari penggunaan bot. Hubungi admin untuk dibuka.'
@@ -143,19 +131,15 @@ async function handleMessages(sock, messageUpdate, printLog) {
             return;
         }
 
-        // Fitur tic-tac-toe dihapus karena belum diimplementasikan
 
         if (!message.key.fromMe) incrementMessageCount(chatId, senderId);
 
-        // Cek kata kasar PERTAMA, sebelum pemrosesan LAINNYA
         if (isGroup && userMessage) {
             await handleBadwordDetection(sock, chatId, message, userMessage, senderId);
         }
 
-        // Kemudian cek prefix command
         if (!userMessage.startsWith('.')) {
             if (isGroup) {
-                // Proses pesan non-command terlebih dahulu
                 await handleChatbotResponse(sock, chatId, message, rawText, senderId);
                 await Antilink(message, sock);
                 await handleBadwordDetection(sock, chatId, message, userMessage, senderId);
@@ -164,18 +148,15 @@ async function handleMessages(sock, messageUpdate, printLog) {
             return;
         }
 
-        // Daftar command admin
         const adminCommands = ['.mute', '.unmute', '.ban', '.unban', '.kick', '.tagall', '.hidetag', '.antilink', '.antitag'];
         const isAdminCommand = adminCommands.some(cmd => userMessage.startsWith(cmd));
 
-        // Daftar command owner
         const ownerCommands = ['.mode', '.autostatus', '.antidelete', '.cleartmp', '.setpp', '.clearsession', '.areact', '.autoreact'];
         const isOwnerCommand = ownerCommands.some(cmd => userMessage.startsWith(cmd));
 
         let isSenderAdmin = false;
         let isBotAdmin = false;
 
-        // Cek status admin hanya untuk command admin di grup
         if (isGroup && isAdminCommand) {
             const adminStatus = await isAdmin(sock, chatId, senderId, message);
             isSenderAdmin = adminStatus.isSenderAdmin;
@@ -201,7 +182,6 @@ async function handleMessages(sock, messageUpdate, printLog) {
             }
         }
 
-        // Cek status owner untuk command owner
         if (isOwnerCommand) {
             if (!message.key.fromMe && !senderIsSudo) {
                 await sock.sendMessage(chatId, { text: 'Command ini hanya tersedia untuk owner atau sudo!' });
@@ -209,20 +189,15 @@ async function handleMessages(sock, messageUpdate, printLog) {
             }
         }
 
-        // Tambahkan ini di awal logika penanganan pesan, sebelum memproses command
         try {
             const data = JSON.parse(fs.readFileSync('./data/messageCount.json'));
-            // Izinkan owner menggunakan bot bahkan dalam mode privat
             if (!data.isPublic && !message.key.fromMe && !senderIsSudo) {
-                return; // Abaikan diam-diam pesan dari non-owner saat dalam mode privat
+                return; 
             }
         } catch (error) {
             console.error('Error memeriksa mode akses:', error);
-            // Default ke mode publik jika ada error membaca file
         }
 
-        // Penangan command - Eksekusi command segera tanpa menunggu indikator mengetik
-        // Kami akan menunjukkan indikator mengetik setelah eksekusi command jika diperlukan
         let commandExecuted = false;
 
         switch (true) {
@@ -334,10 +309,8 @@ async function handleMessages(sock, messageUpdate, printLog) {
                 }
 
                 try {
-                    // Perbarui mode akses
                     data.isPublic = action === 'public';
 
-                    // Simpan data yang diperbarui
                     fs.writeFileSync('./data/messageCount.json', JSON.stringify(data, null, 2));
 
                     await sock.sendMessage(chatId, { text: `Bot sekarang dalam mode *${action}*` });
@@ -449,7 +422,6 @@ async function handleMessages(sock, messageUpdate, printLog) {
                 break;
             case userMessage.startsWith('.welcome'):
                 if (isGroup) {
-                    // Cek status admin jika belum dicek
                     if (!isSenderAdmin) {
                         const adminStatus = await isAdmin(sock, chatId, senderId);
                         isSenderAdmin = adminStatus.isSenderAdmin;
@@ -466,7 +438,6 @@ async function handleMessages(sock, messageUpdate, printLog) {
                 break;
             case userMessage.startsWith('.goodbye'):
                 if (isGroup) {
-                    // Cek status admin jika belum dicek
                     if (!isSenderAdmin) {
                         const adminStatus = await isAdmin(sock, chatId, senderId);
                         isSenderAdmin = adminStatus.isSenderAdmin;
@@ -511,7 +482,6 @@ async function handleMessages(sock, messageUpdate, printLog) {
                     return;
                 }
 
-                // Cek apakah pengirim adalah admin atau owner bot
                 const chatbotAdminStatus = await isAdmin(sock, chatId, senderId);
                 if (!chatbotAdminStatus.isSenderAdmin && !message.key.fromMe) {
                     await sock.sendMessage(chatId, { text: 'Hanya admin atau owner bot yang bisa menggunakan command ini' });
@@ -584,7 +554,6 @@ async function handleMessages(sock, messageUpdate, printLog) {
                 await handleAntideleteCommand(sock, chatId, message, antideleteMatch);
                 break;
             case userMessage === '.surrender':
-                // Handle command surrender untuk permainan tictactoe
                 await handleTicTacToeMove(sock, chatId, senderId, 'surrender');
                 break;
             case userMessage === '.cleartmp':
@@ -686,8 +655,7 @@ async function handleMessages(sock, messageUpdate, printLog) {
                 break;
             default:
                 if (isGroup) {
-                    // Handle pesan grup non-command
-                    if (userMessage) {  // Pastikan ada pesan
+                    if (userMessage) {  
                         await handleChatbotResponse(sock, chatId, message, userMessage, senderId);
                     }
                     await Antilink(message, sock);
@@ -697,13 +665,10 @@ async function handleMessages(sock, messageUpdate, printLog) {
                 break;
         }
 
-        // Jika command dieksekusi, tunjukkan status mengetik setelah eksekusi command
         if (commandExecuted !== false) {
-            // Command dieksekusi, sekarang tunjukkan status mengetik setelah eksekusi command
             await showTypingAfterCommand(sock, chatId);
         }
 
-        // Fungsi untuk menangani command .groupjid
         async function groupJidCommand(sock, chatId, message) {
             const groupJid = message.key.remoteJid;
 
@@ -721,12 +686,10 @@ async function handleMessages(sock, messageUpdate, printLog) {
         }
 
         if (userMessage.startsWith('.')) {
-            // Setelah command diproses dengan sukses
             await addCommandReaction(sock, message);
         }
     } catch (error) {
         console.error('Error dalam penangan pesan:', error.message);
-        // Hanya mencoba mengirim pesan error jika kita memiliki chatId yang valid
         if (chatId) {
             await sock.sendMessage(chatId, {
                 text: 'Gagal memproses command!'
@@ -739,26 +702,20 @@ async function handleGroupParticipantUpdate(sock, update) {
     try {
         const { id, participants, action, author } = update;
 
-        // Cek apakah ini grup
         if (!id.endsWith('@g.us')) return;
 
 
 
-        // Handle event join
         if (action === 'add') {
-            // Cek apakah welcome diaktifkan untuk grup ini
             const isWelcomeEnabled = await isWelcomeOn(id);
             if (!isWelcomeEnabled) return;
 
-            // Dapatkan metadata grup
             const groupMetadata = await sock.groupMetadata(id);
             const groupName = groupMetadata.subject;
             const groupDesc = groupMetadata.desc || 'Tidak ada deskripsi tersedia';
 
-            // Gunakan pesan welcome default sederhana
             const welcomeMessage = 'Selamat datang {user} di {group}!';
 
-            // Kirim pesan welcome untuk setiap peserta baru
             for (const participant of participants) {
                 const user = participant.split('@')[0];
                 const formattedMessage = welcomeMessage
@@ -773,20 +730,15 @@ async function handleGroupParticipantUpdate(sock, update) {
             }
         }
 
-        // Handle event leave
         if (action === 'remove') {
-            // Cek apakah goodbye diaktifkan untuk grup ini
             const isGoodbyeEnabled = await isGoodByeOn(id);
             if (!isGoodbyeEnabled) return;
 
-            // Dapatkan metadata grup
             const groupMetadata = await sock.groupMetadata(id);
             const groupName = groupMetadata.subject;
 
-            // Gunakan pesan goodbye default sederhana
             const goodbyeMessage = 'Selamat tinggal {user}';
 
-            // Kirim pesan goodbye untuk setiap peserta yang keluar
             for (const participant of participants) {
                 const user = participant.split('@')[0];
                 const formattedMessage = goodbyeMessage
@@ -804,27 +756,19 @@ async function handleGroupParticipantUpdate(sock, update) {
     }
 }
 
-// Missing function implementations
 
-// Store message for antidelete feature
 function storeMessage(message) {
-    // This function is called to store messages for potential recovery
-    // Implementation would depend on the antidelete system
-    // For now, just log that it's being stored
     console.log('Message stored for antidelete:', message.key.id);
 }
 
-// Handle message revocation (deletion)
 async function handleMessageRevocation(sock, message) {
     try {
-        // Check if antidelete is enabled
         const antideleteData = JSON.parse(fs.readFileSync('./data/antidelete.json', 'utf8'));
         if (!antideleteData.enabled) return;
 
         const revokedMessage = message.message?.protocolMessage;
         if (!revokedMessage) return;
 
-        // Try to find the original message in store
         const store = require('./lib/lightweight_store');
         const chatId = message.key.remoteJid;
         const originalMessage = store.messages[chatId]?.find(m => m.key.id === revokedMessage.key.id);
@@ -840,32 +784,26 @@ async function handleMessageRevocation(sock, message) {
     }
 }
 
-// Increment message count for statistics
 function incrementMessageCount(chatId, senderId) {
     try {
         const data = JSON.parse(fs.readFileSync('./data/messageCount.json', 'utf8'));
 
-        // Initialize chat if not exists
         if (!data[chatId]) {
             data[chatId] = {};
         }
 
-        // Initialize user if not exists
         if (!data[chatId][senderId]) {
             data[chatId][senderId] = 0;
         }
 
-        // Increment count
         data[chatId][senderId]++;
 
-        // Save back to file
         fs.writeFileSync('./data/messageCount.json', JSON.stringify(data, null, 2));
     } catch (error) {
         console.error('Error incrementing message count:', error);
     }
 }
 
-// Unban command implementation
 async function unbanCommand(sock, chatId, message) {
     try {
         const mentionedJidList = message.message?.extendedTextMessage?.contextInfo?.mentionedJid || [];
@@ -884,7 +822,6 @@ async function unbanCommand(sock, chatId, message) {
             return;
         }
 
-        // Remove from banned list
         const bannedData = JSON.parse(fs.readFileSync('./data/banned.json', 'utf8'));
         const index = bannedData.indexOf(targetJid);
         if (index > -1) {
@@ -900,7 +837,6 @@ async function unbanCommand(sock, chatId, message) {
     }
 }
 
-// Handle antidelete command
 async function handleAntideleteCommand(sock, chatId, message, match) {
     try {
         const antideleteData = JSON.parse(fs.readFileSync('./data/antidelete.json', 'utf8'));
@@ -931,130 +867,103 @@ async function handleAntideleteCommand(sock, chatId, message, match) {
 
 
 async function handleTicTacToeMove(sock, chatId, senderId, move) {
-    // Placeholder implementation
     await sock.sendMessage(chatId, { text: 'Fitur tic-tac-toe belum diimplementasikan.' });
 }
 
 async function topMembers(sock, chatId, isGroup) {
-    // Placeholder implementation
     await sock.sendMessage(chatId, { text: 'Fitur top members belum diimplementasikan.' });
 }
 
 async function blurCommand(sock, chatId, message, quotedMessage) {
-    // Placeholder implementation
     await sock.sendMessage(chatId, { text: 'Fitur blur belum diimplementasikan.' });
 }
 
 async function githubCommand(sock, chatId) {
-    // Placeholder implementation
     await sock.sendMessage(chatId, { text: 'Fitur github belum diimplementasikan.' });
 }
 
 async function flirtCommand(sock, chatId, message) {
-    // Placeholder implementation
     await sock.sendMessage(chatId, { text: 'Fitur flirt belum diimplementasikan.' });
 }
 
 async function characterCommand(sock, chatId, message) {
-    // Placeholder implementation
     await sock.sendMessage(chatId, { text: 'Fitur character belum diimplementasikan.' });
 }
 
 async function wastedCommand(sock, chatId, message) {
-    // Placeholder implementation
     await sock.sendMessage(chatId, { text: 'Fitur wasted belum diimplementasikan.' });
 }
 
 async function shipCommand(sock, chatId, message) {
-    // Placeholder implementation
     await sock.sendMessage(chatId, { text: 'Fitur ship belum diimplementasikan.' });
 }
 
 async function emojimixCommand(sock, chatId, message) {
-    // Placeholder implementation
     await sock.sendMessage(chatId, { text: 'Fitur emojimix belum diimplementasikan.' });
 }
 
 async function stickerTelegramCommand(sock, chatId, message) {
-    // Placeholder implementation
     await sock.sendMessage(chatId, { text: 'Fitur sticker telegram belum diimplementasikan.' });
 }
 
 async function viewOnceCommand(sock, chatId, message) {
-    // Placeholder implementation
     await sock.sendMessage(chatId, { text: 'Fitur view once belum diimplementasikan.' });
 }
 
 async function clearSessionCommand(sock, chatId, message) {
-    // Placeholder implementation
     await sock.sendMessage(chatId, { text: 'Fitur clear session belum diimplementasikan.' });
 }
 
 async function autoStatusCommand(sock, chatId, message, args) {
-    // Placeholder implementation
     await sock.sendMessage(chatId, { text: 'Fitur auto status belum diimplementasikan.' });
 }
 
 async function clearTmpCommand(sock, chatId, message) {
-    // Placeholder implementation
     await sock.sendMessage(chatId, { text: 'Fitur clear tmp belum diimplementasikan.' });
 }
 
 async function setProfilePicture(sock, chatId, message) {
-    // Placeholder implementation
     await sock.sendMessage(chatId, { text: 'Fitur set profile picture belum diimplementasikan.' });
 }
 
 async function aiCommand(sock, chatId, message) {
-    // Placeholder implementation
     await sock.sendMessage(chatId, { text: 'Fitur AI belum diimplementasikan.' });
 }
 
 async function sudoCommand(sock, chatId, message) {
-    // Placeholder implementation
     await sock.sendMessage(chatId, { text: 'Fitur sudo belum diimplementasikan.' });
 }
 
 async function goodnightCommand(sock, chatId, message) {
-    // Placeholder implementation
     await sock.sendMessage(chatId, { text: 'Fitur goodnight belum diimplementasikan.' });
 }
 
 async function animeCommand(sock, chatId, message, args) {
-    // Placeholder implementation
     await sock.sendMessage(chatId, { text: 'Fitur anime belum diimplementasikan.' });
 }
 
 async function piesCommand(sock, chatId, message, args) {
-    // Placeholder implementation
     await sock.sendMessage(chatId, { text: 'Fitur pies belum diimplementasikan.' });
 }
 
 async function updateCommand(sock, chatId, message, senderIsSudo, zipArg) {
-    // Placeholder implementation
     await sock.sendMessage(chatId, { text: 'Fitur update belum diimplementasikan.' });
 }
 
 async function removebgCommand(sock, message, args) {
-    // Placeholder implementation
     await sock.sendMessage(message.key.remoteJid, { text: 'Fitur removebg belum diimplementasikan.' });
 }
 
 async function reminiCommand(sock, chatId, message, args) {
-    // Placeholder implementation
     await sock.sendMessage(chatId, { text: 'Fitur remini belum diimplementasikan.' });
 }
 
 async function showTypingAfterCommand(sock, chatId) {
-    // Placeholder implementation - could show typing indicator
 }
 
-// Handle status updates
 async function handleStatusUpdate(sock, status) {
-    // Placeholder implementation for status updates
 }
 
-// Alih-alih, export penangan bersama dengan handleMessages
 module.exports = {
     handleMessages,
     handleGroupParticipantUpdate,

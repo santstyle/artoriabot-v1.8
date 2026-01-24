@@ -10,13 +10,11 @@ async function broadcastCommand(sock, chatId, message, args) {
         return sock.sendMessage(chatId, { text: '❌ Kamu tidak punya akses untuk broadcast!' }, { quoted: message });
     }
 
-    // Ambil teks tambahan (caption) tanpa ikut command .bc
     let bcText = args.join(' ') || '';
     if (bcText.startsWith('.bc')) bcText = bcText.replace(/^\.bc\s*/, '');
 
     const quotedMsg = message.message?.extendedTextMessage?.contextInfo?.quotedMessage;
 
-    // Ambil semua grup
     const allGroups = await sock.groupFetchAllParticipating();
     const groupIds = Object.keys(allGroups);
 
@@ -31,7 +29,6 @@ async function broadcastCommand(sock, chatId, message, args) {
                 const type = Object.keys(quotedMsg)[0];
                 let buffer;
 
-                // Download media kalau bukan teks
                 if (!['conversation', 'extendedTextMessage'].includes(type)) {
                     buffer = await downloadMediaMessage({ message: quotedMsg }, 'buffer', {}, { logger: console });
                 }

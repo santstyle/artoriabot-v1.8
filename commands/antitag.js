@@ -88,18 +88,14 @@ async function handleTagDetection(sock, chatId, message, senderId) {
         const antitagSetting = await getAntitag(chatId, 'on');
         if (!antitagSetting || !antitagSetting.enabled) return;
 
-        // Check if message contains mentions
         const mentions = message.message?.extendedTextMessage?.contextInfo?.mentionedJid ||
             message.message?.conversation?.match(/@\d+/g) ||
             [];
 
-        // Check if it's a group message and has multiple mentions
         if (mentions.length > 0 && mentions.length >= 3) {
-            // Get group participants to check if it's tagging most/all members
             const groupMetadata = await sock.groupMetadata(chatId);
             const participants = groupMetadata.participants || [];
 
-            // If mentions are more than 50% of group members, consider it as tagall
             const mentionThreshold = Math.ceil(participants.length * 0.5);
 
             if (mentions.length >= mentionThreshold) {
@@ -108,7 +104,6 @@ async function handleTagDetection(sock, chatId, message, senderId) {
                 const action = antitagSetting.action || 'delete';
 
                 if (action === 'delete') {
-                    // Delete the message
                     await sock.sendMessage(chatId, {
                         delete: {
                             remoteJid: chatId,
@@ -118,16 +113,13 @@ async function handleTagDetection(sock, chatId, message, senderId) {
                         }
                     });
 
-                    // Send warning
                     await sock.sendMessage(chatId, {
                         text: `Hai, jangan tag semua member ya~`
                     }, { quoted: message });
 
                 } else if (action === 'kick') {
-                    // Kick the user
                     await sock.groupParticipantsUpdate(chatId, [senderId], "remove");
 
-                    // Send notification
                     await sock.sendMessage(chatId, {
                         text: `@${senderId.split('@')[0]} di-kick karena tag semua member~`
                     });

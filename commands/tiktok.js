@@ -2,7 +2,6 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 
-// Updated list of working TikTok APIs
 const tiktokApis = [
     {
         name: "API TikWM",
@@ -19,7 +18,6 @@ const tiktokApis = [
     }
 ];
 
-// Extract TikTok URL from various formats
 function extractTikTokUrl(text) {
     const patterns = [
         /(?:https?:\/\/)?(?:www\.|vt\.|vm\.)?tiktok\.com\/@[^\/]+\/video\/\d+/i,
@@ -42,7 +40,6 @@ function extractTikTokUrl(text) {
     return null;
 }
 
-// Validate TikTok URL
 function validateTikTokUrl(url) {
     try {
         const urlObj = new URL(url);
@@ -53,10 +50,8 @@ function validateTikTokUrl(url) {
     }
 }
 
-// Get TikTok video info from APIs
 async function getTikTokVideo(url) {
-    const api = tiktokApis[0]; // Use only TikWM API since it works
-
+    const api = tiktokApis[0]; 
     try {
         console.log(`Menggunakan ${api.name}...`);
 
@@ -99,14 +94,13 @@ async function getTikTokVideo(url) {
     }
 }
 
-// Download file to local with progress
 async function downloadFile(url, outputPath) {
     return new Promise((resolve, reject) => {
         axios({
             method: 'GET',
             url: url,
             responseType: 'stream',
-            timeout: 120000, // 2 minutes
+            timeout: 120000,
             maxContentLength: 100 * 1024 * 1024, // 100MB max
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
@@ -152,7 +146,6 @@ async function downloadFile(url, outputPath) {
     });
 }
 
-// Format duration from seconds
 function formatDuration(seconds) {
     if (!seconds) return 'Tidak diketahui';
     const minutes = Math.floor(seconds / 60);
@@ -160,7 +153,6 @@ function formatDuration(seconds) {
     return `${minutes}:${secs.toString().padStart(2, '0')}`;
 }
 
-// Function to compress video if needed
 async function compressVideoIfNeeded(inputPath, maxSizeMB = 50) {
     const stats = fs.statSync(inputPath);
     const sizeMB = stats.size / (1024 * 1024);
@@ -172,31 +164,25 @@ async function compressVideoIfNeeded(inputPath, maxSizeMB = 50) {
 
     console.log(`Video size: ${sizeMB.toFixed(2)} MB - Terlalu besar, perlu compress`);
 
-    // Create compressed file path
     const dir = path.dirname(inputPath);
     const ext = path.extname(inputPath);
     const name = path.basename(inputPath, ext);
     const compressedPath = path.join(dir, `${name}_compressed${ext}`);
 
-    // Simple approach: if ffmpeg is available, use it. Otherwise, just copy
     try {
-        // Check if ffmpeg is available
         const { execSync } = require('child_process');
         try {
             execSync('ffmpeg -version', { stdio: 'ignore' });
 
-            // Compress with ffmpeg
             const cmd = `ffmpeg -i "${inputPath}" -vf "scale=720:-2" -c:v libx264 -crf 28 -preset fast -c:a aac -b:a 128k "${compressedPath}"`;
             execSync(cmd, { stdio: 'inherit' });
 
             const newStats = fs.statSync(compressedPath);
             console.log(`Compressed to: ${(newStats.size / (1024 * 1024)).toFixed(2)} MB`);
 
-            // Delete original
             fs.unlinkSync(inputPath);
             return compressedPath;
         } catch {
-            // ffmpeg not available, just copy
             console.log('FFmpeg tidak tersedia, menggunakan file asli');
             return inputPath;
         }
@@ -215,7 +201,6 @@ async function tiktokCommand(sock, chatId, message, command) {
             message.message?.imageMessage?.caption ||
             '';
 
-        // Extract URL
         let url = '';
         if (command === '.tiktok') {
             url = text.substring(9).trim();
@@ -225,7 +210,6 @@ async function tiktokCommand(sock, chatId, message, command) {
             url = text.split(' ').slice(1).join(' ').trim();
         }
 
-        // Extract TikTok URL from text
         const extractedUrl = extractTikTokUrl(url);
         if (extractedUrl) {
             url = extractedUrl;
@@ -244,7 +228,6 @@ Contoh:
             }, { quoted: message });
         }
 
-        // Validate URL
         if (!validateTikTokUrl(url)) {
             return await sock.sendMessage(chatId, {
                 text: `Link Tidak Valid
@@ -257,7 +240,6 @@ Contoh link yang benar:
             }, { quoted: message });
         }
 
-        // Send initial message
         const statusMsg = await sock.sendMessage(chatId, {
             text: `Memproses TikTok...
 
@@ -267,7 +249,6 @@ Mohon tunggu...`
         }, { quoted: message });
 
         try {
-            // Get video info
             const videoInfo = await getTikTokVideo(url);
 
             if (!videoInfo.success) {
@@ -281,7 +262,6 @@ Coba link yang berbeda atau coba lagi nanti.`
                 return;
             }
 
-            // Create temp directory
             const tempDir = path.join(__dirname, '../temp');
             if (!fs.existsSync(tempDir)) {
                 fs.mkdirSync(tempDir, { recursive: true });
@@ -291,7 +271,6 @@ Coba link yang berbeda atau coba lagi nanti.`
             const videoPath = path.join(tempDir, `tt_${timestamp}.mp4`);
             tempFiles.push(videoPath);
 
-            // Download video
             try {
                 await downloadFile(videoInfo.videoUrl, videoPath);
                 console.log('Download completed successfully');
@@ -300,7 +279,6 @@ Coba link yang berbeda atau coba lagi nanti.`
                 throw new Error(`Gagal download: ${downloadError.message}`);
             }
 
-            // Check if file exists and has content
             if (!fs.existsSync(videoPath)) {
                 throw new Error('File tidak ditemukan setelah download');
             }
@@ -313,7 +291,6 @@ Coba link yang berbeda atau coba lagi nanti.`
             const fileSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
             console.log(`File size: ${fileSizeMB} MB`);
 
-            // Compress if needed
             const finalVideoPath = await compressVideoIfNeeded(videoPath);
             if (finalVideoPath !== videoPath) {
                 tempFiles.push(finalVideoPath);
@@ -322,7 +299,6 @@ Coba link yang berbeda atau coba lagi nanti.`
             const finalStats = fs.statSync(finalVideoPath);
             const finalSizeMB = (finalStats.size / (1024 * 1024)).toFixed(2);
 
-            // Update status
             await sock.sendMessage(chatId, {
                 text: `*Mengirim video...*
 
@@ -332,14 +308,11 @@ Durasi: ${formatDuration(videoInfo.duration)}
 Harap tunggu...`
             });
 
-            // Send video
             try {
                 console.log('Mengirim video ke WhatsApp...');
 
-                // Read file as buffer
                 const videoBuffer = fs.readFileSync(finalVideoPath);
 
-                // Send video
                 await sock.sendMessage(chatId, {
                     video: videoBuffer,
                     mimetype: 'video/mp4',
@@ -348,7 +321,6 @@ Harap tunggu...`
 
                 console.log('Video berhasil dikirim');
 
-                // Send success message
                 await sock.sendMessage(chatId, {
                     text: `*✅ Media Berhasil Didownload!*\n\n` +
                         `Video TikTok telah dikirim!\n\n` +
@@ -359,7 +331,6 @@ Harap tunggu...`
             } catch (sendError) {
                 console.error('Gagal mengirim video:', sendError);
 
-                // Try alternative method: send as document
                 try {
                     await sock.sendMessage(chatId, {
                         document: fs.readFileSync(finalVideoPath),
@@ -407,7 +378,6 @@ Silakan coba lagi.`
         }, { quoted: message });
 
     } finally {
-        // Clean up temp files
         setTimeout(() => {
             tempFiles.forEach(filePath => {
                 try {
@@ -423,7 +393,6 @@ Silakan coba lagi.`
     }
 }
 
-// Simple version
 async function tiktokSimpleCommand(sock, chatId, message) {
     try {
         const text = message.message?.conversation ||
@@ -447,9 +416,7 @@ Contoh:
             text: 'Memproses TikTok...'
         }, { quoted: message });
 
-        // Direct download approach
         try {
-            // Use TikTok API directly
             const response = await axios.post('https://tikwm.com/api/', {
                 url: url
             }, {
@@ -486,7 +453,6 @@ By: ${data.data.author?.nickname || 'Unknown'}`
     }
 }
 
-// Export
 module.exports = {
     tiktok: tiktokCommand,
     tt: tiktokCommand,

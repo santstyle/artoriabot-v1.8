@@ -3,9 +3,6 @@
 const fs = require('fs');
 const path = require('path');
 
-// ============================================
-// DATABASE & CONFIGURATION
-// ============================================
 
 const dataDir = path.join(__dirname, '../data');
 const gamesDataPath = path.join(dataDir, 'tebakkata_games.json');
@@ -14,12 +11,10 @@ const wordsDataPath = path.join(dataDir, 'tebakkata_words.json');
 const leaderboardPath = path.join(dataDir, 'tebakkata_leaderboard.json');
 const achievementsPath = path.join(dataDir, 'tebakkata_achievements.json');
 
-// Ensure data directory exists
 if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
 }
 
-// Initialize default data files
 function initializeDataFiles() {
     const defaultFiles = {
         [gamesDataPath]: { activeGames: {}, completedGames: {}, pendingActions: {} },
@@ -38,9 +33,6 @@ function initializeDataFiles() {
 
 initializeDataFiles();
 
-// ============================================
-// WORD DATABASE
-// ============================================
 
 function getDefaultWords() {
     return {
@@ -102,9 +94,6 @@ function getDefaultWords() {
     };
 }
 
-// ============================================
-// ACHIEVEMENTS SYSTEM
-// ============================================
 
 function getDefaultAchievements() {
     return {
@@ -132,9 +121,6 @@ function getDefaultAchievements() {
     };
 }
 
-// ============================================
-// DATA MANAGEMENT FUNCTIONS (UPDATED)
-// ============================================
 
 function loadData(filePath) {
     try {
@@ -149,7 +135,6 @@ function loadData(filePath) {
     }
 }
 
-// FUNGSI KHUSUS UNTUK LOAD GAME DATA DENGAN RESTORE METHODS
 function loadGamesData() {
     try {
         if (!fs.existsSync(gamesDataPath)) {
@@ -158,7 +143,6 @@ function loadGamesData() {
         const data = fs.readFileSync(gamesDataPath, 'utf8');
         const gamesData = JSON.parse(data);
 
-        // Convert plain objects back to TebakKataGame instances
         if (gamesData.activeGames) {
             Object.keys(gamesData.activeGames).forEach(gameId => {
                 const gameData = gamesData.activeGames[gameId];
@@ -175,17 +159,14 @@ function loadGamesData() {
     }
 }
 
-// FUNGSI KHUSUS UNTUK SAVE GAME DATA
 function saveGamesData(gamesData) {
     try {
-        // Convert to plain object for storage
         const dataToSave = {
             activeGames: {},
             completedGames: gamesData.completedGames || {},
             pendingActions: gamesData.pendingActions || {}
         };
 
-        // Save only serializable data
         if (gamesData.activeGames) {
             Object.entries(gamesData.activeGames).forEach(([gameId, game]) => {
                 if (game && game.state) {
@@ -219,9 +200,7 @@ function saveData(filePath, data) {
     }
 }
 
-// ============================================
-// GAME CLASS (SIMPLIFIED VERSION)
-// ============================================
+
 
 class TebakKataGame {
     constructor(gameId, category, creator, creatorName) {
@@ -231,13 +210,11 @@ class TebakKataGame {
         this.creatorName = creatorName;
 
         if (category && creator && creatorName) {
-            // Initialize new game
             this.initializeNewGame();
         }
     }
 
     initializeNewGame() {
-        // Get word from database
         const wordsData = loadData(wordsDataPath);
         const categoryWords = wordsData.categories?.[this.category]?.words || [];
 
@@ -305,7 +282,6 @@ class TebakKataGame {
         const player = this.state.players[playerId];
 
         if (normalizedGuess === normalizedWord) {
-            // Correct guess
             this.endGame(playerId);
             const score = this.calculateScore(playerId);
 
@@ -318,7 +294,6 @@ class TebakKataGame {
                 playerName: player.name
             };
         } else {
-            // Wrong guess
             player.wrongGuesses++;
 
             return {
@@ -340,7 +315,6 @@ class TebakKataGame {
             return { error: 'Kamu belum bergabung' };
         }
 
-        // Reveal a random letter
         const unrevealedLetters = this.state.word.split('').filter(letter =>
             letter !== ' ' && !this.state.revealedLetters.includes(letter)
         );
@@ -427,7 +401,6 @@ class TebakKataGame {
                 }
             }
 
-            // Update favorite category
             if (!user.stats.favoriteCategory[this.category]) {
                 user.stats.favoriteCategory[this.category] = 0;
             }
@@ -458,10 +431,6 @@ class TebakKataGame {
     }
 }
 
-// ============================================
-// FUNCTION TO RESTORE GAME INSTANCE
-// ============================================
-
 function restoreGameInstance(gameId, gameData) {
     const game = new TebakKataGame();
     game.gameId = gameId;
@@ -471,7 +440,6 @@ function restoreGameInstance(gameId, gameData) {
     game.wordData = gameData.wordData;
     game.state = gameData.state || gameData;
 
-    // Bind all methods to ensure they work properly
     game.addPlayer = TebakKataGame.prototype.addPlayer.bind(game);
     game.makeGuess = TebakKataGame.prototype.makeGuess.bind(game);
     game.useHint = TebakKataGame.prototype.useHint.bind(game);
@@ -484,26 +452,18 @@ function restoreGameInstance(gameId, gameData) {
     return game;
 }
 
-// ============================================
-// UTILITY FUNCTIONS
-// ============================================
-
 function formatTime(seconds) {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
-// ============================================
-// MAIN COMMAND HANDLER
-// ============================================
 
 async function tebakkataCommand(sock, chatId, message) {
     try {
         const text = message.message?.conversation ||
             message.message?.extendedTextMessage?.text || '';
 
-        // Check if command is just ".tebakkata" without arguments
         const commandText = text.trim();
         if (commandText === '.tebakkata' || commandText === '.tebakkata ') {
             return await showHelpMenu(sock, chatId, message);
@@ -515,11 +475,9 @@ async function tebakkataCommand(sock, chatId, message) {
         const userId = message.key.participant || message.key.remoteJid;
         const userName = await getUsername(sock, userId, chatId);
 
-        // Load game data using the new function
-        const gamesData = loadGamesData(); // CHANGED: Use loadGamesData instead of loadData
+        const gamesData = loadGamesData(); 
         const gameId = `game_${chatId.replace(/[@\.]/g, '_')}`;
 
-        // Command routing
         switch (command) {
             case 'start':
                 return await handleStart(sock, chatId, userId, userName, args.slice(1), gamesData, gameId, message);
@@ -560,7 +518,6 @@ async function tebakkataCommand(sock, chatId, message) {
                 return await showHelpMenu(sock, chatId, message);
 
             default:
-                // If command is not recognized, treat as guess
                 if (gamesData.activeGames && gamesData.activeGames[gameId]) {
                     return await handleGuess(sock, chatId, userId, userName, args, gamesData, gameId, message);
                 } else {
@@ -572,16 +529,13 @@ async function tebakkataCommand(sock, chatId, message) {
         console.error('Error in tebakkata command:', error);
 
         await sock.sendMessage(chatId, {
-            text: '❌ *Terjadi kesalahan!*\n\n' +
+            text: '*Terjadi kesalahan!*\n\n' +
                 'Mohon coba lagi nanti.\n' +
                 `Error: ${error.message}`
         }, { quoted: message });
     }
 }
 
-// ============================================
-// HELP MENU (TAMPILAN UTAMA)
-// ============================================
 
 async function showHelpMenu(sock, chatId, message) {
     const helpText = `🎮 *GAME TEBAK KATA* 🎮\n\n` +
@@ -591,7 +545,7 @@ async function showHelpMenu(sock, chatId, message) {
         `3. Gunakan hint jika kesulitan\n` +
         `4. Dapatkan score tertinggi!\n\n` +
 
-        `📌 *PERINTAH UTAMA:*\n` +
+        `*PERINTAH UTAMA:*\n` +
         `.tebakkata start [kategori] - Mulai game baru\n` +
         `.tebakkata join - Bergabung ke game\n` +
         `.tebakkata tebak [kata] - Tebak kata\n` +
@@ -599,48 +553,46 @@ async function showHelpMenu(sock, chatId, message) {
         `.tebakkata status - Lihat status game\n` +
         `.tebakkata stop - Hentikan game\n\n` +
 
-        `📊 *STATISTIK & PERINGKAT:*\n` +
+        `*STATISTIK & PERINGKAT:*\n` +
         `.tebakkata stats - Statistik kamu\n` +
         `.tebakkata leaderboard - Leaderboard pemain\n` +
         `.tebakkata kategori - Lihat kategori tersedia\n\n` +
 
-        `❓ *BANTUAN:*\n` +
+        `*BANTUAN:*\n` +
         `.tebakkata help - Tampilkan menu ini\n\n` +
 
-        `📂 *KATEGORI TERSEDIA:*\n` +
-        `• hewan 🐯 - Hewan & binatang\n` +
-        `• buah 🍎 - Buah-buahan\n` +
-        `• negara 🌍 - Negara & ibukota\n` +
-        `• film 🎬 - Film & serial\n\n` +
+        `*KATEGORI TERSEDIA:*\n` +
+        `• hewan  - Hewan & binatang\n` +
+        `• buah  - Buah-buahan\n` +
+        `• negara  - Negara & ibukota\n` +
+        `• film  - Film & serial\n\n` +
 
-        `🎯 *CONTOH PENGGUNAAN:*\n` +
+        `*CONTOH PENGGUNAAN:*\n` +
         `.tebakkata start hewan\n` +
         `.tebakkata join\n` +
         `.tebakkata tebak harimau\n` +
         `.tebakkata hint\n` +
         `.tebakkata status\n\n` +
 
-        `🏆 *SISTEM SCORE:*\n` +
+        `*SISTEM SCORE:*\n` +
         `• Panjang kata × 10\n` +
         `• Bonus sedikit percobaan\n` +
         `• Penalti penggunaan hint\n` +
         `• Multiplier tingkat kesulitan\n\n` +
 
-        `🎮 *SELAMAT BERMAIN!*`;
+        `*SELAMAT BERMAIN!*`;
 
     await sock.sendMessage(chatId, {
         text: helpText
     }, { quoted: message });
 }
 
-// ============================================
-// COMMAND HANDLERS (UPDATED)
-// ============================================
+
 
 async function handleStart(sock, chatId, userId, userName, args, gamesData, gameId, message) {
     if (gamesData.activeGames && gamesData.activeGames[gameId]) {
         return await sock.sendMessage(chatId, {
-            text: '⚠️ *Game sudah berjalan!*\n\n' +
+            text: '*Game sudah berjalan!*\n\n' +
                 'Gunakan `.tebakkata join` untuk bergabung\n' +
                 'atau `.tebakkata status` untuk lihat status.'
         }, { quoted: message });
@@ -656,7 +608,7 @@ async function handleStart(sock, chatId, userId, userName, args, gamesData, game
             .join('\n');
 
         return await sock.sendMessage(chatId, {
-            text: `❌ *Kategori tidak valid!*\n\n` +
+            text: `*Kategori tidak valid!*\n\n` +
                 `Kategori yang tersedia:\n${categories}\n\n` +
                 `Contoh: .tebakkata start hewan`
         }, { quoted: message });
@@ -670,17 +622,17 @@ async function handleStart(sock, chatId, userId, userName, args, gamesData, game
         }
 
         gamesData.activeGames[gameId] = game;
-        saveGamesData(gamesData); // CHANGED: Use saveGamesData
+        saveGamesData(gamesData); 
 
         const categoryInfo = wordsData.categories[category];
 
         const startMessage = `🎮 *GAME TEBAK KATA DIMULAI!* 🎮\n\n` +
-            `📌 Kategori: ${categoryInfo.name}\n` +
-            `👤 Pembuat: ${userName}\n\n` +
-            `💡 *CLUE:* ${game.state.clue}\n\n` +
-            `🔤 Kata: ${game.getWordHint()}\n` +
-            `📏 Panjang: ${game.state.word.length} huruf\n` +
-            `📊 Tingkat: ${game.state.difficulty === 1 ? 'Mudah' : game.state.difficulty === 2 ? 'Sedang' : 'Sulit'}\n\n` +
+            `Kategori: ${categoryInfo.name}\n` +
+            `Pembuat: ${userName}\n\n` +
+            `*CLUE:* ${game.state.clue}\n\n` +
+            `Kata: ${game.getWordHint()}\n` +
+            `Panjang: ${game.state.word.length} huruf\n` +
+            `Tingkat: ${game.state.difficulty === 1 ? 'Mudah' : game.state.difficulty === 2 ? 'Sedang' : 'Sulit'}\n\n` +
             `*Aturan Game:*\n` +
             `• Max ${game.state.maxAttempts} percobaan\n` +
             `• ${game.state.maxHints} hint tersedia\n` +
@@ -698,7 +650,7 @@ async function handleStart(sock, chatId, userId, userName, args, gamesData, game
 
     } catch (error) {
         await sock.sendMessage(chatId, {
-            text: `❌ *Gagal memulai game!*\n\n${error.message}`
+            text: `*Gagal memulai game!*\n\n${error.message}`
         }, { quoted: message });
     }
 }
@@ -706,21 +658,20 @@ async function handleStart(sock, chatId, userId, userName, args, gamesData, game
 async function handleJoin(sock, chatId, userId, userName, gamesData, gameId, message) {
     if (!gamesData.activeGames || !gamesData.activeGames[gameId]) {
         return await sock.sendMessage(chatId, {
-            text: '❌ *Tidak ada game aktif!*\n\n' +
+            text: '*Tidak ada game aktif!*\n\n' +
                 'Mulai game dulu dengan `.tebakkata start <kategori>`'
         }, { quoted: message });
     }
 
     let game = gamesData.activeGames[gameId];
 
-    // FIX: Restore game instance if methods are missing
     if (game && typeof game.addPlayer !== 'function') {
         game = restoreGameInstance(gameId, game);
         gamesData.activeGames[gameId] = game;
     }
 
     if (game.addPlayer(userId, userName)) {
-        saveGamesData(gamesData); // CHANGED: Use saveGamesData
+        saveGamesData(gamesData); 
 
         await sock.sendMessage(chatId, {
             text: `✅ *${userName} bergabung ke game!*\n\n` +
@@ -730,7 +681,7 @@ async function handleJoin(sock, chatId, userId, userName, gamesData, gameId, mes
         }, { quoted: message });
     } else {
         await sock.sendMessage(chatId, {
-            text: `ℹ️ *Kamu sudah bergabung!*\n\n` +
+            text: `ℹ*Kamu sudah bergabung!*\n\n` +
                 `Langsung tebak kata dengan .tebakkata tebak <kata>`
         }, { quoted: message });
     }
@@ -739,14 +690,13 @@ async function handleJoin(sock, chatId, userId, userName, gamesData, gameId, mes
 async function handleGuess(sock, chatId, userId, userName, args, gamesData, gameId, message) {
     if (!gamesData.activeGames || !gamesData.activeGames[gameId]) {
         return await sock.sendMessage(chatId, {
-            text: '❌ *Tidak ada game aktif!*\n\n' +
+            text: '*Tidak ada game aktif!*\n\n' +
                 'Mulai game dulu dengan `.tebakkata start <kategori>`'
         }, { quoted: message });
     }
 
     let game = gamesData.activeGames[gameId];
 
-    // FIX: Restore game instance if methods are missing
     if (game && typeof game.makeGuess !== 'function') {
         game = restoreGameInstance(gameId, game);
         gamesData.activeGames[gameId] = game;
@@ -764,22 +714,20 @@ async function handleGuess(sock, chatId, userId, userName, args, gamesData, game
 
     if (result.error) {
         return await sock.sendMessage(chatId, {
-            text: `❌ ${result.error}`
+            text: `${result.error}`
         }, { quoted: message });
     }
 
-    saveGamesData(gamesData); // CHANGED: Use saveGamesData
+    saveGamesData(gamesData); 
 
     if (result.success) {
-        // Game completed
-        const winMessage = `🎉 *TEBAKAN BENAR!* 🎉\n\n` +
-            `✅ Kata: *${result.word}*\n` +
-            `👤 Pemenang: ${result.playerName}\n` +
-            `🎯 Percobaan: ${result.attempts}\n` +
-            `🏆 Score: ${result.score} poin\n\n` +
+        const winMessage = `*TEBAKAN BENAR!*\n\n` +
+            `Kata: *${result.word}*\n` +
+            `Pemenang: ${result.playerName}\n` +
+            `Percobaan: ${result.attempts}\n` +
+            `Score: ${result.score} poin\n\n` +
             `*Main lagi?* \`.tebakkata start [kategori]\``;
 
-        // Remove game from active games
         delete gamesData.activeGames[gameId];
         saveGamesData(gamesData);
 
@@ -788,16 +736,15 @@ async function handleGuess(sock, chatId, userId, userName, args, gamesData, game
         }, { quoted: message });
 
     } else {
-        // Wrong guess
         const status = game.getGameStatus();
 
-        const response = `❌ *SALAH!* ❌\n\n` +
+        const response = `*SALAH!*\n\n` +
             `Tebakan: "${guess}"\n\n` +
-            `🔤 Kata: ${status.wordHint}\n` +
-            `🎯 Sisa percobaan: ${status.attemptsLeft}\n` +
-            `💡 Sisa hint: ${status.hintsLeft}\n\n` +
+            `Kata: ${status.wordHint}\n` +
+            `Sisa percobaan: ${status.attemptsLeft}\n` +
+            `Sisa hint: ${status.hintsLeft}\n\n` +
             `*Clue:* ${status.clue}\n\n` +
-            `Coba lagi! 💪`;
+            `Coba lagi! `;
 
         await sock.sendMessage(chatId, {
             text: response
@@ -808,13 +755,12 @@ async function handleGuess(sock, chatId, userId, userName, args, gamesData, game
 async function handleHint(sock, chatId, userId, gamesData, gameId, message) {
     if (!gamesData.activeGames || !gamesData.activeGames[gameId]) {
         return await sock.sendMessage(chatId, {
-            text: '❌ *Tidak ada game aktif!*'
+            text: '*Tidak ada game aktif!*'
         }, { quoted: message });
     }
 
     let game = gamesData.activeGames[gameId];
 
-    // FIX: Restore game instance if methods are missing
     if (game && typeof game.useHint !== 'function') {
         game = restoreGameInstance(gameId, game);
         gamesData.activeGames[gameId] = game;
@@ -824,17 +770,17 @@ async function handleHint(sock, chatId, userId, gamesData, gameId, message) {
 
     if (result.error) {
         return await sock.sendMessage(chatId, {
-            text: `❌ ${result.error}`
+            text: `${result.error}`
         }, { quoted: message });
     }
 
-    saveGamesData(gamesData); // CHANGED: Use saveGamesData
+    saveGamesData(gamesData);
 
-    const hintMessage = `💡 *HINT #${game.state.hintsUsed}*\n\n` +
+    const hintMessage = `*HINT #${game.state.hintsUsed}*\n\n` +
         `Huruf "${result.letter}" terungkap!\n\n` +
-        `🔤 Kata: ${result.wordHint}\n` +
-        `🎯 Sisa percobaan: ${game.state.maxAttempts - game.state.attempts}\n` +
-        `💡 Sisa hint: ${result.hintsRemaining}\n\n` +
+        `Kata: ${result.wordHint}\n` +
+        `Sisa percobaan: ${game.state.maxAttempts - game.state.attempts}\n` +
+        `Sisa hint: ${result.hintsRemaining}\n\n` +
         `*Clue:* ${game.state.clue}`;
 
     await sock.sendMessage(chatId, {
@@ -845,14 +791,13 @@ async function handleHint(sock, chatId, userId, gamesData, gameId, message) {
 async function handleStatus(sock, chatId, gamesData, gameId, message) {
     if (!gamesData.activeGames || !gamesData.activeGames[gameId]) {
         return await sock.sendMessage(chatId, {
-            text: '❌ *Tidak ada game aktif!*\n\n' +
+            text: '*Tidak ada game aktif!*\n\n' +
                 'Mulai game dengan `.tebakkata start < kategori > `'
         }, { quoted: message });
     }
 
     let game = gamesData.activeGames[gameId];
 
-    // FIX: Restore game instance if methods are missing
     if (game && typeof game.getGameStatus !== 'function') {
         game = restoreGameInstance(gameId, game);
         gamesData.activeGames[gameId] = game;
@@ -865,20 +810,20 @@ async function handleStatus(sock, chatId, gamesData, gameId, message) {
     let playersText = '';
     status.players.forEach((player, index) => {
         playersText += `${index + 1}. ${player.name} \n`;
-        playersText += `   ✅ ${player.correctGuesses} | ❌ ${player.wrongGuesses} \n`;
-        playersText += `   💡 ${player.hintsUsed} | 🏆 ${player.score} \n`;
+        playersText += `   ✅ ${player.correctGuesses} | ${player.wrongGuesses} \n`;
+        playersText += `   ${player.hintsUsed} | ${player.score} \n`;
     });
 
-    const statusMessage = `📊 * STATUS GAME * 📊\n\n` +
-        `📌 Kategori: ${categoryInfo.name || game.category} \n` +
-        `👤 Pembuat: ${game.creatorName} \n\n` +
-        `💡 * CLUE:* ${status.clue} \n\n` +
-        `🔤 Kata: ${status.wordHint} \n` +
-        `📏 Panjang: ${status.wordLength} huruf\n\n` +
+    const statusMessage = `* STATUS GAME *\n\n` +
+        `Kategori: ${categoryInfo.name || game.category} \n` +
+        `Pembuat: ${game.creatorName} \n\n` +
+        `* CLUE:* ${status.clue} \n\n` +
+        `Kata: ${status.wordHint} \n` +
+        `Panjang: ${status.wordLength} huruf\n\n` +
         `* Progress:*\n` +
-        `🎯 Percobaan: ${status.attempts}/${status.maxAttempts}\n` +
-        `💡 Hint: ${status.hintsUsed}/${status.maxHints}\n` +
-        `⏱️ Waktu: ${formatTime(status.timeElapsed)}\n\n` +
+        `Percobaan: ${status.attempts}/${status.maxAttempts}\n` +
+        `Hint: ${status.hintsUsed}/${status.maxHints}\n` +
+        `⏱Waktu: ${formatTime(status.timeElapsed)}\n\n` +
         `*Pemain (${status.players.length}):*\n${playersText}\n` +
         `*Perintah:*\n.tebakkata join - Bergabung\n.tebakkata tebak <kata> - Menebak`;
 
@@ -890,28 +835,26 @@ async function handleStatus(sock, chatId, gamesData, gameId, message) {
 async function handleStop(sock, chatId, userId, gamesData, gameId, message) {
     if (!gamesData.activeGames || !gamesData.activeGames[gameId]) {
         return await sock.sendMessage(chatId, {
-            text: '❌ *Tidak ada game aktif!*'
+            text: '*Tidak ada game aktif!*'
         }, { quoted: message });
     }
 
     let game = gamesData.activeGames[gameId];
 
-    // FIX: Restore game instance if methods are missing
     if (game && typeof game.getGameStatus !== 'function') {
         game = restoreGameInstance(gameId, game);
         gamesData.activeGames[gameId] = game;
     }
 
-    // Only creator can stop
     if (game.creator !== userId) {
         return await sock.sendMessage(chatId, {
-            text: '⚠️ *Hanya pembuat game yang bisa menghentikan!*'
+            text: '*Hanya pembuat game yang bisa menghentikan!*'
         }, { quoted: message });
     }
 
     const players = Object.values(game.state.players);
 
-    let resultsText = `🛑 *GAME DIHENTIKAN* 🛑\n\n` +
+    let resultsText = `*GAME DIHENTIKAN*\n\n` +
         `Kata: *${game.state.word}*\n` +
         `Clue: ${game.state.clue}\n\n` +
         `*Hasil:*\n\n`;
@@ -921,7 +864,7 @@ async function handleStop(sock, chatId, userId, gamesData, gameId, message) {
         resultsText += `${medal} ${player.name}: ${player.score} poin\n`;
     });
 
-    resultsText += `\n*Terima kasih sudah bermain!* 🎮\n\n` +
+    resultsText += `\n*Terima kasih sudah bermain!*\n\n` +
         `Main lagi? \`.tebakkata start[kategori]\``;
 
     // Delete game
@@ -963,17 +906,17 @@ async function handleStats(sock, chatId, userId, userName, message) {
         });
     }
 
-    const statsText = `📊 * STATISTIK PERMAINAN * 📊\n\n` +
-        `👤 Pemain: ${userName} \n\n` +
+    const statsText = `* STATISTIK PERMAINAN * \n\n` +
+        `Pemain: ${userName} \n\n` +
         `* Statistik:*\n` +
-        `🎮 Total Games: ${stats.totalGames} \n` +
-        `✅ Games Menang: ${stats.gamesWon} \n` +
-        `📈 Win Rate: ${winRate}%\n` +
-        `💰 Total Score: ${stats.totalScore} \n` +
-        `🌟 Best Score: ${stats.bestScore} \n\n` +
+        `Total Games: ${stats.totalGames} \n` +
+        `Games Menang: ${stats.gamesWon} \n` +
+        `Win Rate: ${winRate}%\n` +
+        `Total Score: ${stats.totalScore} \n` +
+        `Best Score: ${stats.bestScore} \n\n` +
         `* Preferensi:*\n` +
-        `🎯 Kategori Favorit: ${favoriteCategory} \n` +
-        `📂 Games di kategori: ${maxGames} \n\n` +
+        `Kategori Favorit: ${favoriteCategory} \n` +
+        ` Games di kategori: ${maxGames} \n\n` +
         `* Main lagi ?*\n\`.tebakkata start[kategori]\``;
 
     await sock.sendMessage(chatId, {
@@ -984,7 +927,6 @@ async function handleStats(sock, chatId, userId, userName, message) {
 async function handleLeaderboard(sock, chatId, message) {
     const usersData = loadData(usersDataPath);
 
-    // Convert to array and sort by totalScore
     const leaderboard = Object.entries(usersData)
         .map(([id, user]) => ({
             id,
@@ -1004,15 +946,15 @@ async function handleLeaderboard(sock, chatId, message) {
         }, { quoted: message });
     }
 
-    let leaderboardText = `🏆 * LEADERBOARD TEBAK KATA * 🏆\n\n`;
+    let leaderboardText = `* LEADERBOARD TEBAK KATA *\n\n`;
 
     leaderboard.forEach((player, index) => {
         const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
         const winRate = player.totalGames > 0 ? Math.round((player.gamesWon / player.totalGames) * 100) : 0;
 
         leaderboardText += `${medal} ${player.name} \n`;
-        leaderboardText += `   🏆 Score: ${player.score} \n`;
-        leaderboardText += `   🎮 Games: ${player.totalGames} (${winRate}% win rate) \n\n`;
+        leaderboardText += `   Score: ${player.score} \n`;
+        leaderboardText += `   Games: ${player.totalGames} (${winRate}% win rate) \n\n`;
     });
 
     leaderboardText += `* Bergabunglah dengan:*\n.tebakkata start[kategori]`;
@@ -1028,11 +970,11 @@ async function handleCategories(sock, chatId, message) {
 
     if (Object.keys(categories).length === 0) {
         return await sock.sendMessage(chatId, {
-            text: '❌ *Tidak ada kategori tersedia!*'
+            text: '*Tidak ada kategori tersedia!*'
         }, { quoted: message });
     }
 
-    let categoriesText = `📂 * KATEGORI TEBAK KATA * 📂\n\n`;
+    let categoriesText = `* KATEGORI TEBAK KATA *\n\n`;
 
     Object.entries(categories).forEach(([id, cat]) => {
         const difficultyEmoji = cat.difficulty === 'easy' ? '🟢' :
@@ -1041,8 +983,8 @@ async function handleCategories(sock, chatId, message) {
         categoriesText += `* ${cat.name}*\n`;
         categoriesText += `   ID: \`${id}\`\n`;
         categoriesText += `   ${difficultyEmoji} ${cat.difficulty.toUpperCase()}\n`;
-        categoriesText += `   📝 ${cat.description}\n`;
-        categoriesText += `   📊 Kata: ${cat.words?.length || 0}\n\n`;
+        categoriesText += `   ${cat.description}\n`;
+        categoriesText += `   Kata: ${cat.words?.length || 0}\n\n`;
     });
 
     categoriesText += `*Cara main:*\n.tebakkata start [id_kategori]\n\n` +
@@ -1053,23 +995,16 @@ async function handleCategories(sock, chatId, message) {
     }, { quoted: message });
 }
 
-// ============================================
-// UTILITY FUNCTIONS
-// ============================================
+
 
 async function getUsername(sock, userId, chatId) {
     try {
-        // Extract phone number from user ID
         const phoneNumber = userId.split('@')[0];
         return `User_${phoneNumber.substring(phoneNumber.length - 4)}`;
     } catch (error) {
         return 'Player';
     }
 }
-
-// ============================================
-// EXPORT COMMAND
-// ============================================
 
 module.exports = {
     tebakkata: tebakkataCommand

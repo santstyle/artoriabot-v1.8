@@ -11,7 +11,6 @@ async function youtubeCommand(sock, chatId, message, command) {
         const text = message.message?.conversation ||
             message.message?.extendedTextMessage?.text || '';
 
-        // Ambil URL
         let url = '';
         if (text.includes('.youtube ')) {
             url = text.split('.youtube ')[1].trim();
@@ -26,12 +25,10 @@ async function youtubeCommand(sock, chatId, message, command) {
             return;
         }
 
-        // PESAN 1: Proses awal
         await sock.sendMessage(chatId, {
             text: `Memproses YouTube\n\nURL: ${url}\n\nMohon tunggu...`
         }, { quoted: message });
 
-        // Extract video ID
         function extractVideoId(url) {
             const patterns = [
                 /youtu\.be\/([a-zA-Z0-9_-]{11})/,
@@ -57,7 +54,6 @@ async function youtubeCommand(sock, chatId, message, command) {
 
         const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
-        // Cek yt-dlp
         try {
             await execPromise('yt-dlp --version');
         } catch (error) {
@@ -67,7 +63,6 @@ async function youtubeCommand(sock, chatId, message, command) {
             return;
         }
 
-        // Buat folder temp
         const tempDir = path.join(__dirname, '../temp');
         if (!fs.existsSync(tempDir)) {
             fs.mkdirSync(tempDir, { recursive: true });
@@ -75,17 +70,14 @@ async function youtubeCommand(sock, chatId, message, command) {
 
         tempFile = path.join(tempDir, `youtube_${Date.now()}.mp4`);
 
-        // PERBAIKAN: Gunakan format yang spesifik untuk menghindari file rusak
-        // Gunakan format 18 (360p MP4) atau 22 (720p MP4) yang lebih stabil
-        // Tambahkan --js-runtimes node untuk mengatasi error JavaScript runtime
         const downloadCmd = `yt-dlp --js-runtimes node -f "best[ext=mp4][filesize<50M]/best[ext=mp4]" --merge-output-format mp4 -o "${tempFile}" "${youtubeUrl}"`;
 
         console.log('Download command:', downloadCmd);
 
         try {
             const { stdout, stderr } = await execPromise(downloadCmd, {
-                timeout: 180000, // 3 menit timeout
-                maxBuffer: 10 * 1024 * 1024 // 10MB buffer
+                timeout: 180000, 
+                maxBuffer: 10 * 1024 * 1024
             });
 
             console.log('Download stdout:', stdout.substring(0, 200));
@@ -94,7 +86,6 @@ async function youtubeCommand(sock, chatId, message, command) {
         } catch (downloadError) {
             console.log('Download error, trying fallback format...');
 
-            // FALLBACK: Coba format yang lebih sederhana
             const fallbackCmd = `yt-dlp --js-runtimes node -f "18/22/136+140" --merge-output-format mp4 -o "${tempFile}" "${youtubeUrl}"`;
             await execPromise(fallbackCmd, {
                 timeout: 180000,
@@ -102,7 +93,6 @@ async function youtubeCommand(sock, chatId, message, command) {
             });
         }
 
-        // VERIFIKASI FILE: Pastikan file valid sebelum dikirim
         if (!fs.existsSync(tempFile)) {
             throw new Error('File tidak berhasil didownload');
         }
@@ -112,11 +102,9 @@ async function youtubeCommand(sock, chatId, message, command) {
             throw new Error('File kosong (0 bytes)');
         }
 
-        // Cek apakah file MP4 valid dengan membaca header
         const fileBuffer = fs.readFileSync(tempFile, { length: 8 });
         const fileHeader = fileBuffer.toString('hex', 0, 8);
 
-        // Header MP4 biasanya mulai dengan 'ftyp' (66747970 dalam hex)
         if (!fileHeader.includes('66747970') && !fileHeader.includes('000000')) {
             console.log('File header tidak valid:', fileHeader);
             throw new Error('File video rusak atau format tidak didukung');
@@ -124,20 +112,16 @@ async function youtubeCommand(sock, chatId, message, command) {
 
         const fileSizeMB = (fileStats.size / (1024 * 1024)).toFixed(2);
 
-        // PESAN 2: Download selesai
         await sock.sendMessage(chatId, {
             text: `Download selesai\nUkuran: ${fileSizeMB} MB\nMengirim video...`
         });
 
-        // Kirim video TANPA CAPTION
         await sock.sendMessage(chatId, {
             video: fs.readFileSync(tempFile),
             mimetype: 'video/mp4',
             fileName: `youtube_${videoId}.mp4`
-            // TIDAK ADA CAPTION
         });
 
-        // PESAN 3: Konfirmasi sukses
         await sock.sendMessage(chatId, {
             text: `✅ Media Berhasil Didownload\n\nUntuk download lagi:\n \`.yt <link-youtube>\``
         });
@@ -157,7 +141,6 @@ async function youtubeCommand(sock, chatId, message, command) {
         await sock.sendMessage(chatId, { text: errorMsg });
 
     } finally {
-        // Cleanup
         if (tempFile && fs.existsSync(tempFile)) {
             setTimeout(() => {
                 try {
@@ -171,7 +154,6 @@ async function youtubeCommand(sock, chatId, message, command) {
     }
 }
 
-// Export untuk .youtube dan .yt
 module.exports = {
     youtube: youtubeCommand,
     yt: youtubeCommand

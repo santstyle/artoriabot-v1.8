@@ -7,7 +7,6 @@ async function twitterCommand(sock, chatId, message, command) {
             message.message?.imageMessage?.caption ||
             '';
 
-        // Extract URL
         let url = '';
         if (command === '.twitter') {
             url = text.substring(9).trim();
@@ -19,19 +18,16 @@ async function twitterCommand(sock, chatId, message, command) {
             url = text.split(' ').slice(1).join(' ').trim();
         }
 
-        // Check if URL is valid
         if (!url || (!url.includes('twitter.com') && !url.includes('x.com') && !url.includes('t.co'))) {
             return await sock.sendMessage(chatId, {
                 text: `Format: ${command} <link twitter/x>\n\nContoh:\n${command} https://x.com/username/status/123456789`
             }, { quoted: message });
         }
 
-        // Send processing message (TIDAK dihapus)
         const processingMsg = await sock.sendMessage(chatId, {
             text: `Memproses link Twitter...\n\nURL: ${url.substring(0, 50)}${url.length > 50 ? '...' : ''}\n\nMohon tunggu sebentar...`
         });
 
-        // Extract tweet ID
         const tweetId = extractTweetId(url);
         if (!tweetId) {
             await sock.sendMessage(chatId, {
@@ -40,12 +36,10 @@ async function twitterCommand(sock, chatId, message, command) {
             return;
         }
 
-        // Try to get media
         let mediaData = null;
         let username = 'Twitter';
 
         try {
-            // Try VXTwitter first
             const response = await axios.get(`https://api.vxtwitter.com/Twitter/status/${tweetId}`, {
                 timeout: 10000,
                 headers: { 'User-Agent': 'Mozilla/5.0' }
@@ -58,7 +52,6 @@ async function twitterCommand(sock, chatId, message, command) {
                 const media = data.media_extended[0];
 
                 if ((media.type === 'video' || media.type === 'gif') && media.variants) {
-                    // Find best quality video
                     const videoUrl = media.variants
                         .filter(v => v.content_type === 'video/mp4')
                         .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0]?.url;
@@ -82,7 +75,6 @@ async function twitterCommand(sock, chatId, message, command) {
             console.log('VXTwitter gagal:', error.message);
         }
 
-        // If VXTwitter fails, try FXTwitter
         if (!mediaData) {
             try {
                 const response = await axios.get(`https://api.fxtwitter.com/status/${tweetId}`, {
@@ -112,7 +104,6 @@ async function twitterCommand(sock, chatId, message, command) {
             }
         }
 
-        // Send media if available
         if (mediaData) {
             if (mediaData.type === 'video' || mediaData.type === 'gif') {
                 await sock.sendMessage(chatId, {
@@ -126,7 +117,6 @@ async function twitterCommand(sock, chatId, message, command) {
                 });
             }
 
-            // Send success message
             await sock.sendMessage(chatId, {
                 text: `Media Berhasil Didownload!\n\n` +
                     `Postingan Twitter berhasil didownload!\n\n` +
@@ -134,7 +124,6 @@ async function twitterCommand(sock, chatId, message, command) {
                     `Ketik: \`.twt <link twitter>\``
             });
         } else {
-            // If no media found
             await sock.sendMessage(chatId, {
                 text: 'Gagal mendownload media. Pastikan link berisi video/foto dan bukan teks saja.'
             });
@@ -148,7 +137,6 @@ async function twitterCommand(sock, chatId, message, command) {
     }
 }
 
-// Helper function to extract tweet ID
 function extractTweetId(url) {
     const patterns = [
         /(?:twitter\.com|x\.com)\/(?:[^\/]+)\/status\/(\d+)/,
