@@ -375,7 +375,7 @@ async function handleChatbotCommand(sock, chatId, message, match) {
 
         if (!match) {
             const botNumber = sock.user.id.split(':')[0];
-            const helpText = `Panduan Artoria Pendragon 🤖
+            const helpText = `Panduan Artoria Pendragon 
 
 PERINTAH:
 .chatbot on  - Nyalakan Artoria di grup ini
@@ -427,7 +427,7 @@ Artoria siap menjadi teman ngobrolmu!`;
             saveUserGroupData(groupData);
 
             return sock.sendMessage(chatId, {
-                text: `🎉 Yeay! Artoria sekarang aktif di sini!\n\nSebut namaku atau mention @${botNumber} untuk mulai ngobrol!\n\n"Saber-class servant, siap melayani!"`,
+                text: `Yeay! Artoria sekarang aktif di sini!\n\nSebut namaku atau mention @${botNumber} untuk mulai ngobrol!\n\n"Saber-class servant, siap melayani!"`,
                 quoted: message
             });
         }
@@ -445,7 +445,7 @@ Artoria siap menjadi teman ngobrolmu!`;
             saveUserGroupData(groupData);
 
             return sock.sendMessage(chatId, {
-                text: 'Artoria dimatikan. Sampai jumpa! 😊',
+                text: 'Artoria dimatikan. Sampai jumpa!',
                 quoted: message
             });
         }

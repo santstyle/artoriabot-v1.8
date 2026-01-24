@@ -21,7 +21,7 @@ async function handleTranslateCommand(sock, chatId, message, match) {
             const args = match.trim().split(' ');
             if (args.length < 2) {
                 return sock.sendMessage(chatId, {
-                    text: `TRANSLATOR MANIS\n\nCara pakai:\n1. Reply pesan dengan: .translate <bahasa> atau .trt <bahasa>\n2. Atau ketik: .translate <teks> <bahasa> atau .trt <teks> <bahasa>\n\nContoh:\n.translate halo dunia fr\n.trt halo dunia fr\n\nKode bahasa:\nfr - Perancis\nes - Spanyol\nde - Jerman\nit - Italia\npt - Portugis\nru - Rusia\nja - Jepang\nko - Korea\nzh - China\nar - Arab\nhi - Hindi\nid - Indonesia\nen - Inggris`,
+                    text: `TRANSLATOR\n\nCara pakai:\n1. Reply pesan dengan: .translate <bahasa> atau .trt <bahasa>\n2. Atau ketik: .translate <teks> <bahasa> atau .trt <teks> <bahasa>\n\nContoh:\n.translate halo dunia fr\n.trt halo dunia fr\n\nKode bahasa:\nfr - Perancis\nes - Spanyol\nde - Jerman\nit - Italia\npt - Portugis\nru - Rusia\nja - Jepang\nko - Korea\nzh - China\nar - Arab\nhi - Hindi\nid - Indonesia\nen - Inggris`,
                     quoted: message
                 });
             }

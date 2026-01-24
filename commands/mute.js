@@ -19,13 +19,13 @@ async function muteCommand(sock, chatId, senderId, durationInMinutes) {
 
     const durationInMilliseconds = durationInMinutes * 60 * 1000;
     try {
-        await sock.groupSettingUpdate(chatId, 'announcement'); // Mute the group
+        await sock.groupSettingUpdate(chatId, 'announcement'); 
         await sock.sendMessage(chatId, {
             text: `Grup dimute untuk ${durationInMinutes} menit ya~`
         });
 
         setTimeout(async () => {
-            await sock.groupSettingUpdate(chatId, 'not_announcement'); // Unmute after the duration
+            await sock.groupSettingUpdate(chatId, 'not_announcement'); 
             await sock.sendMessage(chatId, {
                 text: 'Waktunya selesai~ grup udah di-unmute!'
             });

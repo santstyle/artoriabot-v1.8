@@ -26,7 +26,7 @@ const convertToVideo = async (sock, quotedMessage, chatId, sender, args) => {
         const stickerMessage = quotedMessage?.stickerMessage || quotedMessage?.message?.stickerMessage;
         if (!stickerMessage) {
             await sock.sendMessage(chatId, {
-                text: '⚠️ Balas pesan stiker dengan perintah *.tovideo* untuk mengonversi ke video.'
+                text: 'Balas pesan stiker dengan perintah *.tovideo* untuk mengonversi ke video.'
             });
             return;
         }
@@ -55,7 +55,7 @@ const convertToVideo = async (sock, quotedMessage, chatId, sender, args) => {
         const videoBuffer = await fsPromises.readFile(outputVideoPath);
         await sock.sendMessage(chatId, {
             video: videoBuffer,
-            caption: '🎥 Stiker GIF berhasil dikonversi ke video!'
+            caption: 'Stiker GIF berhasil dikonversi ke video!'
         });
 
         scheduleFileDeletion(outputVideoPath);

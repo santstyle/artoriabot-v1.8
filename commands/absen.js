@@ -46,7 +46,7 @@ async function finishAbsen(sock, m) {
     }
 
     if (!absenSessions[groupId] || !absenSessions[groupId].active) {
-        return sock.sendMessage(groupId, { text: "❌ Tidak ada absen yang sedang berlangsung." }, { quoted: m });
+        return sock.sendMessage(groupId, { text: "Tidak ada absen yang sedang berlangsung." }, { quoted: m });
     }
 
     const session = absenSessions[groupId];

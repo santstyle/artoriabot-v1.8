@@ -13,7 +13,7 @@ async function antibadwordCommand(sock, chatId, message, senderId, isSenderAdmin
         console.error('Error di antibadword command:', error);
 
         await sock.sendMessage(chatId, {
-            text: '❌ *TERJADI KESALAHAN!*\n\n' +
+            text: '*TERJADI KESALAHAN!*\n\n' +
                 'Terjadi error saat memproses perintah antibadword.\n' +
                 'Silakan coba lagi beberapa saat.'
         });

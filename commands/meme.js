@@ -11,8 +11,8 @@ async function memeCommand(sock, chatId, message) {
         const source = memeData.source || 'Candaan API';
 
         const buttons = [
-            { buttonId: '.meme', buttonText: { displayText: '🎭 Another Meme' }, type: 1 },
-            { buttonId: '.joke', buttonText: { displayText: '😄 Joke' }, type: 1 }
+            { buttonId: '.meme', buttonText: { displayText: 'Another Meme' }, type: 1 },
+            { buttonId: '.joke', buttonText: { displayText: 'Joke' }, type: 1 }
         ];
 
         await sock.sendMessage(chatId, {
@@ -25,7 +25,7 @@ async function memeCommand(sock, chatId, message) {
     } catch (error) {
         console.error('Error in meme command:', error.message);
         await sock.sendMessage(chatId, {
-            text: '❌ Gagal ambil meme Indo. Coba lagi nanti ya.'
+            text: 'Gagal ambil meme Indo. Coba lagi nanti ya.'
         });
     }
 }
